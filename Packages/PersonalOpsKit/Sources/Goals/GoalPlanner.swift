@@ -28,6 +28,10 @@ public struct PlannedTask: Sendable, Equatable {
     public let latestAcceptable: Date
     /// 0-based week within the plan horizon.
     public let weekIndex: Int
+    /// Non-nil when this task's duration/frequency was adjusted by HealthKit pacing (Phase 3C).
+    /// This is the visible "HealthKit-influenced" marker the Goals UI surfaces and tests assert
+    /// on. `nil` on every unpaced task, so its presence is unambiguous.
+    public let pacing: PacingInfluence?
 
     public init(
         ruleKey: String,
@@ -38,7 +42,8 @@ public struct PlannedTask: Sendable, Equatable {
         expectedDuration: TimeInterval,
         earliestAcceptable: Date,
         latestAcceptable: Date,
-        weekIndex: Int
+        weekIndex: Int,
+        pacing: PacingInfluence? = nil
     ) {
         self.ruleKey = ruleKey
         self.title = title
@@ -49,10 +54,20 @@ public struct PlannedTask: Sendable, Equatable {
         self.earliestAcceptable = earliestAcceptable
         self.latestAcceptable = latestAcceptable
         self.weekIndex = weekIndex
+        self.pacing = pacing
     }
 
     /// The task's intended start (== `earliestAcceptable`).
     public var scheduledStart: Date { earliestAcceptable }
+
+    /// A copy carrying the given HealthKit pacing marker (used by `PacedPlanner`).
+    public func stampingPacing(_ influence: PacingInfluence) -> PlannedTask {
+        PlannedTask(
+            ruleKey: ruleKey, title: title, flexibility: flexibility, priority: priority,
+            conflictPolicy: conflictPolicy, expectedDuration: expectedDuration,
+            earliestAcceptable: earliestAcceptable, latestAcceptable: latestAcceptable,
+            weekIndex: weekIndex, pacing: influence)
+    }
 }
 
 /// The full generated plan for a goal: its milestones and its scheduled tasks.
