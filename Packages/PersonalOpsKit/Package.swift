@@ -77,13 +77,21 @@ let package = Package(
             dependencies: ["Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals", "Reasoning"]
         ),
 
-        // Voice stack (Phase 6): STT/TTS boundary — skeleton only.
-        .target(name: "Voice", dependencies: ["Core"]),
+        // Voice stack (Phase 6): the STT/TTS plumbing (SpeechToText / TextToSpeech / TTSRouter /
+        // audio session — provider-swappable, Apple Speech + ElevenLabs/AVSpeechSynthesizer) AND
+        // the conversational layer that wraps it. The `VoiceConversationController` is literally
+        // "the Q&A loop wrapped in STT/TTS" (AGENT_DESIGN §1) and voice-first Evening Capture fills
+        // `EveningCapture.CaptureInput` — so Voice depends on `Agent` (which transitively brings
+        // QAOrchestrator, DailyLoop's EveningCapture, and Proposals' PlanTextExtractor). The
+        // low-level plumbing files import only Core + platform frameworks; only the controller
+        // reaches up into Agent. The dependency is coarse but acyclic (nothing in Agent needs
+        // Voice); a future split (Voice-plumbing vs. Voice-conversation) is documented in the log.
+        .target(name: "Voice", dependencies: ["Core", "Agent"]),
 
         // Shared SwiftUI surface consumed by the app shell. Depends on Data from Phase 1
         // so the app shell can browse the SwiftData-backed memory store, and on Integrations
         // from Phase 2 so the Settings screen can show connection status and connect/disconnect.
-        .target(name: "UI", dependencies: ["Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals", "Signals", "Reasoning", "Agent"]),
+        .target(name: "UI", dependencies: ["Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals", "Signals", "Reasoning", "Agent", "Voice"]),
 
         // Protocol-based fakes with minimal seed data, used by every later phase's tests.
         .target(name: "Fixtures", dependencies: ["Core", "Integrations", "Reasoning", "Goals"]),
@@ -119,6 +127,13 @@ let package = Package(
         // Phase 5 agent orchestration + golden fixtures. Depends on the full stack the tools
         // run against plus Fixtures for the scripted reasoning provider and fake integrations.
         .testTarget(name: "AgentTests",
-                    dependencies: ["Agent", "Core", "Data", "Goals", "DailyLoop", "Proposals", "Integrations", "Reasoning", "Fixtures"])
+                    dependencies: ["Agent", "Core", "Data", "Goals", "DailyLoop", "Proposals", "Integrations", "Reasoning", "Fixtures"]),
+        // Phase 6 voice stack. Depends on Voice + the full conversational stack it wraps
+        // (Agent/DailyLoop/Proposals) plus Fixtures for the fake clock/reasoning provider and
+        // Integrations for the MockURLProtocol-style transport (ElevenLabs REST is exercised
+        // against a mocked transport). Voice-specific fakes (STT/TTS/audio) live in this target.
+        .testTarget(name: "VoiceTests",
+                    dependencies: ["Voice", "Core", "Data", "Goals", "DailyLoop", "Proposals",
+                                   "Integrations", "Reasoning", "Agent", "Fixtures"])
     ]
 )

@@ -5,6 +5,7 @@ import Data
 import Integrations
 import Goals
 import Agent
+import Voice
 
 /// # UI module (shared SwiftUI surface)
 ///
@@ -16,13 +17,17 @@ import Agent
 public struct RootView: View {
     private let integrations: IntegrationsEnvironment
     private let agent: AgentEnvironment
+    private let voice: VoiceEnvironment?
 
-    /// The app injects a composed integrations + agent environment; previews/tests can pass one
-    /// too. The agent defaults to `.unavailable()` so callers that don't use reasoning still work.
+    /// The app injects a composed integrations + agent + voice environment; previews/tests can
+    /// pass one too. The agent defaults to `.unavailable()` so callers that don't use reasoning
+    /// still work; `voice` defaults to nil (no mic affordance) for previews.
     public init(integrations: IntegrationsEnvironment,
-                agent: AgentEnvironment = .unavailable()) {
+                agent: AgentEnvironment = .unavailable(),
+                voice: VoiceEnvironment? = nil) {
         self.integrations = integrations
         self.agent = agent
+        self.voice = voice
     }
 
     public var body: some View {
@@ -34,7 +39,7 @@ public struct RootView: View {
             .tabItem { Label("Briefing", systemImage: "sun.max") }
 
             NavigationStack {
-                CaptureView()
+                CaptureView(voice: voice)
             }
             .tabItem { Label("Capture", systemImage: "square.and.pencil") }
 
@@ -54,7 +59,7 @@ public struct RootView: View {
             .tabItem { Label("Goals", systemImage: "target") }
 
             NavigationStack {
-                AskView(agent: agent, integrations: integrations)
+                AskView(agent: agent, integrations: integrations, voice: voice)
             }
             .tabItem { Label("Ask", systemImage: "bubble.left.and.text.bubble.right") }
 

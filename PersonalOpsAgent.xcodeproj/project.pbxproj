@@ -451,6 +451,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Personal Ops Agent uses the microphone so you can talk to the assistant and capture your day by voice.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Personal Ops Agent transcribes your speech on-device to understand questions and evening capture. Transcripts aren't stored unless you confirm an update.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -479,6 +481,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Personal Ops Agent uses the microphone so you can talk to the assistant and capture your day by voice.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Personal Ops Agent transcribes your speech on-device to understand questions and evening capture. Transcripts aren't stored unless you confirm an update.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

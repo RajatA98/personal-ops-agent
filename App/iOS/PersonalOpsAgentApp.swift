@@ -6,6 +6,7 @@ import Integrations
 import Signals
 import Agent
 import Reasoning
+import Voice
 import UI
 
 /// iOS app entry point. Phase 1 stands up the SwiftData model container; Phase 2 composes the
@@ -22,6 +23,7 @@ struct PersonalOpsAgentApp: App {
     private let container: ModelContainer
     private let integrations: IntegrationsEnvironment
     private let agent: AgentEnvironment
+    private let voice: VoiceEnvironment
 
     init() {
         do {
@@ -48,17 +50,24 @@ struct PersonalOpsAgentApp: App {
                 self.agent = .unavailable()
                 logger.log(.info, "No Gemini API key — reasoning layer unavailable.")
             }
+            // Voice layer (Phase 6): ElevenLabs TTS when a real key is present, else the system
+            // voice; on-device STT (Apple Speech) either way.
+            self.voice = .live(elevenLabsAPIKey: config.elevenLabsAPIKey)
+            logger.log(.info, Self.isRealKey(config.elevenLabsAPIKey)
+                       ? "Voice configured (ElevenLabs TTS)."
+                       : "Voice configured (system voice — no ElevenLabs key).")
             logger.log(.info, "Integrations configured for Google OAuth client.")
         } else {
             self.integrations = .unconfigured()
             self.agent = .unavailable()
+            self.voice = .live(elevenLabsAPIKey: nil)
             logger.log(.info, "No Secrets/Config.local found — integrations start unconfigured.")
         }
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(integrations: integrations, agent: agent)
+            RootView(integrations: integrations, agent: agent, voice: voice)
         }
         .modelContainer(container)
     }
