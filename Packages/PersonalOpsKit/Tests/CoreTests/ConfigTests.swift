@@ -31,6 +31,38 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(config.elevenLabsAPIKey, "ek")
     }
 
+    func test_cloudKitFlag_defaultsOff_whenAbsent() throws {
+        let contents = """
+        GOOGLE_OAUTH_CLIENT_ID=cid
+        GEMINI_API_KEY=gk
+        ELEVENLABS_API_KEY=ek
+        """
+        let config = try Config.parse(contents)
+        XCTAssertFalse(config.cloudKitSyncEnabled, "absent CLOUDKIT_SYNC_ENABLED ⇒ off")
+    }
+
+    func test_cloudKitFlag_parsesTrue_caseInsensitive() throws {
+        let contents = """
+        GOOGLE_OAUTH_CLIENT_ID=cid
+        GEMINI_API_KEY=gk
+        ELEVENLABS_API_KEY=ek
+        CLOUDKIT_SYNC_ENABLED=True
+        """
+        let config = try Config.parse(contents)
+        XCTAssertTrue(config.cloudKitSyncEnabled)
+    }
+
+    func test_cloudKitFlag_nonTrueValue_isOff() throws {
+        let contents = """
+        GOOGLE_OAUTH_CLIENT_ID=cid
+        GEMINI_API_KEY=gk
+        ELEVENLABS_API_KEY=ek
+        CLOUDKIT_SYNC_ENABLED=no
+        """
+        let config = try Config.parse(contents)
+        XCTAssertFalse(config.cloudKitSyncEnabled)
+    }
+
     func test_missingKey_throwsConfigError() {
         let contents = "GEMINI_API_KEY=gk\nELEVENLABS_API_KEY=ek\n"
         XCTAssertThrowsError(try Config.parse(contents)) { error in

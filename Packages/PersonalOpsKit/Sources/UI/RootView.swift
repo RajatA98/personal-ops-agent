@@ -18,16 +18,21 @@ public struct RootView: View {
     private let integrations: IntegrationsEnvironment
     private let agent: AgentEnvironment
     private let voice: VoiceEnvironment?
+    /// Phase 7A: the resolved CloudKit sync state, surfaced in the Integrations tab's sync row.
+    private let syncState: CloudKitSyncState
 
     /// The app injects a composed integrations + agent + voice environment; previews/tests can
     /// pass one too. The agent defaults to `.unavailable()` so callers that don't use reasoning
-    /// still work; `voice` defaults to nil (no mic affordance) for previews.
+    /// still work; `voice` defaults to nil (no mic affordance) for previews. `syncState` defaults
+    /// to `.off` (single-device) for previews/tests.
     public init(integrations: IntegrationsEnvironment,
                 agent: AgentEnvironment = .unavailable(),
-                voice: VoiceEnvironment? = nil) {
+                voice: VoiceEnvironment? = nil,
+                syncState: CloudKitSyncState = .off) {
         self.integrations = integrations
         self.agent = agent
         self.voice = voice
+        self.syncState = syncState
     }
 
     public var body: some View {
@@ -70,7 +75,8 @@ public struct RootView: View {
 
             NavigationStack {
                 IntegrationsSettingsView(status: integrations.status,
-                                         controller: integrations.controller)
+                                         controller: integrations.controller,
+                                         syncState: syncState)
             }
             .tabItem { Label("Integrations", systemImage: "link") }
         }

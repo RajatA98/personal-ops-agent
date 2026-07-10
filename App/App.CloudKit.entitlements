@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!-- ============================================================================================
+     CloudKit-enabled entitlements (Phase 7A) — READY TO ACTIVATE, NOT the default.
+
+     This is the app-group entitlements PLUS the CloudKit + push entitlements SwiftData needs to
+     mirror the store into the user's private iCloud database. It is kept separate from the default
+     `App.entitlements` on purpose:
+
+       • Provisioning a CloudKit container requires a PAID Apple Developer Program membership
+         ($99/yr). A free Apple ID / personal team CANNOT sign an app that declares these keys —
+         attempting to sideload it on the free tier fails at signing. The whole project defaults to
+         free-tier sideloading (LOCKED_DECISIONS #2), so the default build must NOT declare CloudKit.
+
+     To ACTIVATE sync (after enrolling in the paid program and creating the container — see
+     docs/CLOUDKIT_SETUP.md), do ONE of:
+       (a) In Xcode, select the PersonalOpsAgent target → Signing & Capabilities → + Capability →
+           iCloud → check "CloudKit" and add the container `iCloud.com.rajatarora.PersonalOpsAgent`.
+           Xcode rewrites `App.entitlements` for you; you can then delete this file.
+       (b) Point the target's build setting `CODE_SIGN_ENTITLEMENTS` at this file:
+           `CODE_SIGN_ENTITLEMENTS = App/App.CloudKit.entitlements` (Debug + Release).
+     Then set `CLOUDKIT_SYNC_ENABLED=true` in `Secrets/Config.local` and run on a signed device.
+     ============================================================================================ -->
+<dict>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.rajatarora.PersonalOpsAgent</string>
+	</array>
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.rajatarora.PersonalOpsAgent</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+	</array>
+	<!-- Push entitlement drives CloudKit's near-real-time sync notifications. On a paid account
+	     Xcode/automatic-signing provisions this; change to `production` for a release build. -->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>

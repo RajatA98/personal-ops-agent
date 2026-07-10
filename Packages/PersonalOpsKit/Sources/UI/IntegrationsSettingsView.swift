@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import Core
+import Data
 import Integrations
 import Signals
 
@@ -25,6 +26,9 @@ public struct IntegrationsSettingsView: View {
     /// the `RootView`/App composition root (pass `integrations.gmail` + `integrations.gmailMetadata`).
     private let gmail: (any GmailAPI)?
     private let gmailMetadata: (any GmailMetadataStore)?
+    /// Phase 7A: the resolved CloudKit sync state (off / on / unavailable). Defaults to `.off` so
+    /// preview/older call sites render unchanged.
+    private let syncState: CloudKitSyncState
 
     @Environment(\.modelContext) private var modelContext
 
@@ -37,11 +41,13 @@ public struct IntegrationsSettingsView: View {
                 controller: any IntegrationController,
                 gmail: (any GmailAPI)? = nil,
                 gmailMetadata: (any GmailMetadataStore)? = nil,
+                syncState: CloudKitSyncState = .off,
                 now: @escaping () -> Date = { Date() }) {
         self.status = status
         self.controller = controller
         self.gmail = gmail
         self.gmailMetadata = gmailMetadata
+        self.syncState = syncState
         self.now = now
     }
 
@@ -65,6 +71,8 @@ public struct IntegrationsSettingsView: View {
                 gmailScanSection(gmail: gmail, metadata: gmailMetadata)
             }
 
+            syncSection
+
             if let errorMessage {
                 Section {
                     Label(errorMessage, systemImage: "exclamationmark.triangle")
@@ -74,6 +82,64 @@ public struct IntegrationsSettingsView: View {
             }
         }
         .navigationTitle("Integrations")
+    }
+
+    /// # iCloud sync section (Phase 7A)
+    ///
+    /// Shows the CloudKit sync state (off / on / unavailable) and explains it in plain language.
+    /// It is intentionally **read-only** here: the container is built once at launch from a Config
+    /// flag (`CLOUDKIT_SYNC_ENABLED`), so turning sync on/off is a launch-time setting, not a live
+    /// toggle (SwiftData can't re-attach CloudKit to a running container). SwiftData exposes no
+    /// public "last synced at", so we don't invent one — we state what we can honestly know.
+    @ViewBuilder
+    private var syncSection: some View {
+        Section("iCloud sync (iPhone ↔ Mac)") {
+            HStack {
+                Image(systemName: syncIcon).foregroundStyle(syncTint)
+                Text("Sync").font(.headline)
+                Spacer()
+                Text(syncState.label).font(.caption).foregroundStyle(syncTint)
+            }
+            Text(syncExplanation)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            if case .unavailable(let reason) = syncState {
+                Label(reason, systemImage: "exclamationmark.icloud")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+        }
+    }
+
+    private var syncIcon: String {
+        switch syncState {
+        case .off: return "icloud.slash"
+        case .active: return "checkmark.icloud"
+        case .unavailable: return "exclamationmark.icloud"
+        }
+    }
+
+    private var syncTint: Color {
+        switch syncState {
+        case .off: return .secondary
+        case .active: return .green
+        case .unavailable: return .orange
+        }
+    }
+
+    private var syncExplanation: String {
+        switch syncState {
+        case .off:
+            return "Sync is off — your data stays on this device only. To sync between iPhone and Mac, "
+                + "enable it in setup (see docs/CLOUDKIT_SETUP.md). This device works fully without sync."
+        case .active:
+            return "Sync is on. Changes flow between your iPhone and Mac automatically through your "
+                + "private iCloud account — Apple never gives anyone else access. Nothing is sent to any "
+                + "server we run."
+        case .unavailable:
+            return "Sync was requested but iCloud isn't available on this device right now, so the app is "
+                + "running local-only. Your data is safe on this device and will sync once iCloud is back."
+        }
     }
 
     /// "Scan now" — the foreground scan trigger. Runs the deterministic Gmail signal pipeline,

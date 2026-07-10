@@ -21,22 +21,33 @@ import UI
 @main
 struct PersonalOpsAgentApp: App {
     private let container: ModelContainer
+    private let syncState: CloudKitSyncState
     private let integrations: IntegrationsEnvironment
     private let agent: AgentEnvironment
     private let voice: VoiceEnvironment
 
     init() {
+        // Load local secrets FIRST — the CloudKit opt-in (`CLOUDKIT_SYNC_ENABLED`, default OFF) must
+        // be known before the container is built. Absent config ⇒ sync off, app runs local-only.
+        let localConfig = Self.loadLocalConfig()
+
+        // Phase 7A: resolve the container with graceful CloudKit degradation. When the flag is on we
+        // attach the CloudKit private database; if iCloud/CloudKit is unavailable (simulator / free
+        // Apple ID) `resolve` falls back to a fully-working local-only store and reports why — it
+        // never crashes. When the flag is off it's a plain local-only container (`.off`).
         do {
-            let container = try DataStore.makeContainer()
-            try MemorySampleData.seedIfEmpty(context: ModelContext(container))
-            self.container = container
+            let resolved = try DataStore.resolve(preferCloudKit: localConfig?.cloudKitSyncEnabled ?? false)
+            try MemorySampleData.seedIfEmpty(context: ModelContext(resolved.container))
+            self.container = resolved.container
+            self.syncState = resolved.syncState
         } catch {
             fatalError("Failed to initialize the model container: \(error)")
         }
+        let container = self.container
 
-        // Load local secrets if present; register them for log redaction before anything runs.
+        // Register secrets for log redaction before anything runs.
         var logger = RedactingLogger()
-        if let config = Self.loadLocalConfig() {
+        if let config = localConfig {
             for secret in config.secrets { logger.registerSecret(secret) }
             // Durable Gmail metadata store (Phase 4B) so scan dedupe survives relaunch.
             self.integrations = .live(clientID: config.googleOAuthClientID,
@@ -63,11 +74,18 @@ struct PersonalOpsAgentApp: App {
             self.voice = .live(elevenLabsAPIKey: nil)
             logger.log(.info, "No Secrets/Config.local found — integrations start unconfigured.")
         }
+
+        // Phase 7A: record how CloudKit sync resolved (off / on / degraded). Never logs secrets.
+        switch syncState {
+        case .off: logger.log(.info, "iCloud sync off (local-only).")
+        case .active: logger.log(.info, "iCloud sync enabled (CloudKit private database attached).")
+        case .unavailable(let reason): logger.log(.info, "iCloud sync requested but unavailable — \(reason)")
+        }
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(integrations: integrations, agent: agent, voice: voice)
+            RootView(integrations: integrations, agent: agent, voice: voice, syncState: syncState)
         }
         .modelContainer(container)
     }

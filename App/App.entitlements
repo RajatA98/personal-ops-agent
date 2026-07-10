@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- App Group (Phase 3B): shared with the Briefing widget extension.
+	     This is the DEFAULT, free-tier-safe entitlements file: it declares only the app group,
+	     which a free Apple ID CAN sign — so device sideloading keeps working (LOCKED_DECISIONS #2).
+	     CloudKit sync (Phase 7A) lives in the separate `App.CloudKit.entitlements` because a free
+	     account cannot provision a CloudKit container; see docs/CLOUDKIT_SETUP.md to switch it on
+	     after enrolling in the paid Apple Developer Program. -->
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.com.rajatarora.PersonalOpsAgent</string>

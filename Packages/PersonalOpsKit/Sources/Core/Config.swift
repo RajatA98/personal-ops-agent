@@ -11,17 +11,29 @@ public struct Config: Equatable, Sendable {
     public let googleOAuthClientID: String
     public let geminiAPIKey: String
     public let elevenLabsAPIKey: String
+    /// Phase 7A opt-in: whether to attempt CloudKit iPhone↔Mac sync at launch. **Default OFF.**
+    /// Optional key (`CLOUDKIT_SYNC_ENABLED=true`), so existing `Config.local` files without it
+    /// keep parsing unchanged. Even when `true`, the container degrades gracefully to local-only
+    /// if iCloud/CloudKit is unavailable (see `DataStore.resolve`). Flip this to `true` only after
+    /// following `docs/CLOUDKIT_SETUP.md` (needs a paid Apple Developer account + iCloud capability).
+    public let cloudKitSyncEnabled: Bool
 
-    public init(googleOAuthClientID: String, geminiAPIKey: String, elevenLabsAPIKey: String) {
+    public init(googleOAuthClientID: String,
+                geminiAPIKey: String,
+                elevenLabsAPIKey: String,
+                cloudKitSyncEnabled: Bool = false) {
         self.googleOAuthClientID = googleOAuthClientID
         self.geminiAPIKey = geminiAPIKey
         self.elevenLabsAPIKey = elevenLabsAPIKey
+        self.cloudKitSyncEnabled = cloudKitSyncEnabled
     }
 
     public enum Key: String, CaseIterable {
         case googleOAuthClientID = "GOOGLE_OAUTH_CLIENT_ID"
         case geminiAPIKey = "GEMINI_API_KEY"
         case elevenLabsAPIKey = "ELEVENLABS_API_KEY"
+        /// Optional (not required to parse); absent ⇒ sync off.
+        case cloudKitSyncEnabled = "CLOUDKIT_SYNC_ENABLED"
     }
 
     /// Load and parse from a file URL.
@@ -55,10 +67,15 @@ public struct Config: Equatable, Sendable {
             return v
         }
 
+        // Optional boolean flag; absent or non-"true" ⇒ false. Never a parse error (keeps older
+        // Config.local files valid).
+        let cloudKit = (values[Key.cloudKitSyncEnabled.rawValue]?.lowercased()) == "true"
+
         return Config(
             googleOAuthClientID: try require(.googleOAuthClientID),
             geminiAPIKey: try require(.geminiAPIKey),
-            elevenLabsAPIKey: try require(.elevenLabsAPIKey)
+            elevenLabsAPIKey: try require(.elevenLabsAPIKey),
+            cloudKitSyncEnabled: cloudKit
         )
     }
 
