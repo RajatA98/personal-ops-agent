@@ -42,7 +42,13 @@ These are architectural constraints, not prompt-level suggestions:
 
 ## Build & Test
 
-No Xcode project exists yet — Phase 0 of `PROJECT_PLAN.md` creates the scaffold, test targets, fixtures (fake Google API, fake HealthKit, fake reasoning provider, fake clock), and CI conventions. Once it exists: `xcodebuild test` is the validation command; update this section with the exact invocation when Phase 0 lands.
+Phase 0 scaffold is in place: a thin hand-authored `PersonalOpsAgent.xcodeproj` (file-system-synchronized groups — new files under `App/` are picked up without pbxproj edits) + local Swift Package `Packages/PersonalOpsKit` holding all module code (Core, Data, Integrations, Goals, Proposals, Reasoning, Voice, UI, Fixtures).
+
+- Fast unit tests (all package logic): `cd Packages/PersonalOpsKit && swift test`
+- Full app build: `xcodebuild build -project PersonalOpsAgent.xcodeproj -scheme PersonalOpsAgent -destination 'platform=iOS Simulator,name=iPhone 16 Pro'`
+- Full test suite (app + UI): `xcodebuild test -project PersonalOpsAgent.xcodeproj -scheme PersonalOpsAgent -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.2'`
+
+Conventions fixed by Phase 0 (see `docs/SETUP.md`): iOS deployment target 18.0; package is Swift 6 strict-concurrency-clean; secrets go in `Secrets/Config.local` (gitignored; template at `Secrets/Config.example`) and are registered with `RedactingLogger` at startup; `AppEntity.appID` is the stable-ID convention for CloudKit compatibility; `ProposalType`/`ProposalStatus`/`TaskFlexibility`/`ConflictPolicy` shared vocabulary lives in the package — reuse it, don't redefine.
 
 ## Working Conventions
 
