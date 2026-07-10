@@ -14,5 +14,7 @@ import Core
 /// cycle — Phase 1 relocated it there from this file (a move, not a redefinition).
 /// Reference those types via `import Core`.
 public enum GoalsModule {
-    public static let supportedPlaybooks = ["training", "job_search"]
+    /// Keys of the shipped playbooks. Authoritative list is `PlaybookLibrary.all`; this
+    /// mirrors their keys for a quick membership check.
+    public static var supportedPlaybooks: [String] { PlaybookLibrary.all.map(\.key) }
 }

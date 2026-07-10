@@ -3,6 +3,7 @@ import SwiftData
 import Core
 import Data
 import Integrations
+import Goals
 
 /// # UI module (shared SwiftUI surface)
 ///
@@ -25,6 +26,11 @@ public struct RootView: View {
                 MemoryBrowserView()
             }
             .tabItem { Label("Memory", systemImage: "brain") }
+
+            NavigationStack {
+                GoalsView()
+            }
+            .tabItem { Label("Goals", systemImage: "target") }
 
             NavigationStack {
                 IntegrationsSettingsView(status: integrations.status,

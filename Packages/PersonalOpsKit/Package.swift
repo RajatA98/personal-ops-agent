@@ -50,7 +50,7 @@ let package = Package(
         // Shared SwiftUI surface consumed by the app shell. Depends on Data from Phase 1
         // so the app shell can browse the SwiftData-backed memory store, and on Integrations
         // from Phase 2 so the Settings screen can show connection status and connect/disconnect.
-        .target(name: "UI", dependencies: ["Core", "Data", "Integrations"]),
+        .target(name: "UI", dependencies: ["Core", "Data", "Integrations", "Goals"]),
 
         // Protocol-based fakes with minimal seed data, used by every later phase's tests.
         .target(name: "Fixtures", dependencies: ["Core", "Integrations", "Reasoning", "Goals"]),
@@ -59,6 +59,10 @@ let package = Package(
         .testTarget(name: "CoreTests", dependencies: ["Core"]),
         .testTarget(name: "DataTests", dependencies: ["Data", "Core", "Fixtures"]),
         .testTarget(name: "FixturesTests", dependencies: ["Fixtures", "Core", "Integrations", "Reasoning"]),
-        .testTarget(name: "IntegrationsTests", dependencies: ["Integrations", "Fixtures"])
+        .testTarget(name: "IntegrationsTests", dependencies: ["Integrations", "Fixtures"]),
+        // Phase 3A goal engine & playbooks. Depends on Integrations so the "engine performs
+        // zero calendar writes" acceptance test can drive a FakeGoogleCalendarAPI and assert
+        // its write-call count stays at 0.
+        .testTarget(name: "GoalsTests", dependencies: ["Goals", "Core", "Data", "Fixtures", "Integrations"])
     ]
 )

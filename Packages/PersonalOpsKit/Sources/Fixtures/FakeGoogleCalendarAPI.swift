@@ -15,6 +15,7 @@ public final class FakeGoogleCalendarAPI: GoogleCalendarAPI, @unchecked Sendable
     private let lock = NSLock()
     private var seededEvents: [CalendarEventDTO]
     private var _createdEvents: [CreatedEvent] = []
+    private var _writeCallCount = 0
 
     public init(events: [CalendarEventDTO] = []) {
         self.seededEvents = events
@@ -22,6 +23,14 @@ public final class FakeGoogleCalendarAPI: GoogleCalendarAPI, @unchecked Sendable
 
     public var createdEvents: [CreatedEvent] {
         lock.withLock { _createdEvents }
+    }
+
+    /// Total number of *write* method invocations (create + update + delete), counted even
+    /// when a create is idempotently deduped. Lets tests assert a code path performed **zero**
+    /// calendar writes — e.g. Phase 3A's engine, which must only *preview* schedules, never
+    /// write them.
+    public var writeCallCount: Int {
+        lock.withLock { _writeCallCount }
     }
 
     /// Fixed agent-calendar ID the fake writes to.
@@ -38,6 +47,7 @@ public final class FakeGoogleCalendarAPI: GoogleCalendarAPI, @unchecked Sendable
 
     public func updateEvent(_ event: CalendarEventDTO) async throws -> CalendarEventDTO {
         lock.withLock {
+            _writeCallCount += 1
             if let idx = seededEvents.firstIndex(where: { $0.id == event.id }) {
                 seededEvents[idx] = event
             }
@@ -46,7 +56,10 @@ public final class FakeGoogleCalendarAPI: GoogleCalendarAPI, @unchecked Sendable
     }
 
     public func deleteEvent(id: String, calendarID: String) async throws {
-        lock.withLock { seededEvents.removeAll { $0.id == id } }
+        lock.withLock {
+            _writeCallCount += 1
+            seededEvents.removeAll { $0.id == id }
+        }
     }
 
     public func listEvents(calendarID: String, from: Date, to: Date) async throws -> [CalendarEventDTO] {
@@ -55,6 +68,7 @@ public final class FakeGoogleCalendarAPI: GoogleCalendarAPI, @unchecked Sendable
 
     public func createEvent(_ event: CalendarEventDTO, idempotencyKey: String) async throws -> CalendarEventDTO {
         lock.withLock {
+            _writeCallCount += 1
             // Idempotent: a repeat key does not append a second record.
             if !_createdEvents.contains(where: { $0.idempotencyKey == idempotencyKey }) {
                 _createdEvents.append(CreatedEvent(event: event, idempotencyKey: idempotencyKey))
