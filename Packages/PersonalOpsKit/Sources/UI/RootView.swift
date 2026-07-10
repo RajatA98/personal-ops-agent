@@ -21,16 +21,32 @@ public struct RootView: View {
     }
 
     public var body: some View {
+        // Briefing is the first/default tab — the daily loop is the product's front door.
         TabView {
             NavigationStack {
-                MemoryBrowserView()
+                BriefingView(integrations: integrations)
             }
-            .tabItem { Label("Memory", systemImage: "brain") }
+            .tabItem { Label("Briefing", systemImage: "sun.max") }
+
+            NavigationStack {
+                CaptureView()
+            }
+            .tabItem { Label("Capture", systemImage: "square.and.pencil") }
+
+            NavigationStack {
+                WeeklyReviewView(integrations: integrations)
+            }
+            .tabItem { Label("Review", systemImage: "chart.bar") }
 
             NavigationStack {
                 GoalsView()
             }
             .tabItem { Label("Goals", systemImage: "target") }
+
+            NavigationStack {
+                MemoryBrowserView()
+            }
+            .tabItem { Label("Memory", systemImage: "brain") }
 
             NavigationStack {
                 IntegrationsSettingsView(status: integrations.status,
