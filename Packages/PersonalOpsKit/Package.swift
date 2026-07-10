@@ -40,8 +40,13 @@ let package = Package(
         // playbooks/slip detection; on Data for the persisted models it reads/writes.
         .target(name: "DailyLoop", dependencies: ["Core", "Data", "Integrations", "Goals"]),
 
-        // Proposal state machine & Ops Inbox (Phase 4A) — skeleton only.
-        .target(name: "Proposals", dependencies: ["Core", "Data"]),
+        // Proposal state machine, per-type execution handlers & Ops Inbox (Phase 4A).
+        // Depends on Integrations for the idempotent agent-calendar write path (the
+        // create/update-event handlers), on Goals for the SchedulePreview → Proposal mapping,
+        // and on DailyLoop for the Weekly Review → next-week batch. None of those depend back
+        // on Proposals, so there is no cycle; the safety-critical engine/handlers stay in this
+        // one module while its builders can see the upstream value types they translate.
+        .target(name: "Proposals", dependencies: ["Core", "Data", "Integrations", "Goals", "DailyLoop"]),
 
         // LLM reasoning boundary (Phase 5): ReasoningProvider abstraction + Prompts/.
         .target(
@@ -56,7 +61,7 @@ let package = Package(
         // Shared SwiftUI surface consumed by the app shell. Depends on Data from Phase 1
         // so the app shell can browse the SwiftData-backed memory store, and on Integrations
         // from Phase 2 so the Settings screen can show connection status and connect/disconnect.
-        .target(name: "UI", dependencies: ["Core", "Data", "Integrations", "Goals", "DailyLoop"]),
+        .target(name: "UI", dependencies: ["Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals"]),
 
         // Protocol-based fakes with minimal seed data, used by every later phase's tests.
         .target(name: "Fixtures", dependencies: ["Core", "Integrations", "Reasoning", "Goals"]),
@@ -73,6 +78,11 @@ let package = Package(
         // Phase 3B daily loop. Depends on Fixtures for the fake calendar/Gmail seed data and
         // FakeClock, and on Integrations for the source-freshness/event DTO types.
         .testTarget(name: "DailyLoopTests",
-                    dependencies: ["DailyLoop", "Core", "Data", "Goals", "Fixtures", "Integrations"])
+                    dependencies: ["DailyLoop", "Core", "Data", "Goals", "Fixtures", "Integrations"]),
+        // Phase 4A proposal system & Ops Inbox. Depends on Fixtures for the fake calendar
+        // (idempotent-write assertions) and FakeClock, on Goals/DailyLoop for the preview and
+        // weekly-review builders' inputs, and on Integrations for the calendar API + status store.
+        .testTarget(name: "ProposalsTests",
+                    dependencies: ["Proposals", "Core", "Data", "Goals", "DailyLoop", "Fixtures", "Integrations"])
     ]
 )

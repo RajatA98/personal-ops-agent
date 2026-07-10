@@ -39,6 +39,11 @@ public struct RootView: View {
             .tabItem { Label("Review", systemImage: "chart.bar") }
 
             NavigationStack {
+                OpsInboxView(integrations: integrations)
+            }
+            .tabItem { Label("Inbox", systemImage: "tray.full") }
+
+            NavigationStack {
                 GoalsView()
             }
             .tabItem { Label("Goals", systemImage: "target") }
