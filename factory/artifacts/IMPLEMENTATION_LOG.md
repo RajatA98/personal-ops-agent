@@ -267,3 +267,16 @@ The final phase: a native macOS app (`PersonalOpsAgentMac`) that shares the *ent
 - [ ] macOS widget (Notification Center/desktop) — separate extension.
 - [ ] Mac iMessage/Shortcuts entry wrapper — if/when the macOS Shortcuts automation surface is confirmed on a real Mac.
 - [ ] Optional: iCloud-Keychain single-consent Google OAuth across devices (currently per-device by design).
+
+## Review fixes — Post-review remediation ✅ (commit `6a0ed41`)
+
+Fixed the independent code review's findings (`factory/artifacts/REVIEW_REPORT.md`: 1 Critical, 2 Major, 3 Minor). No safety-rule change; the propose-containment and registry-audit tests pass unchanged.
+
+- **Critical-1 (macOS build) — FIXED.** Root cause: the `com.apple.security.application-groups` entitlement needs a team-provisioned profile, so automatic signing failed on a certless/CI checkout. The Mac target's **Debug** config now signs **ad-hoc** (`CODE_SIGN_IDENTITY = "-"`, `CODE_SIGN_STYLE = Manual`) against a new `App/PersonalOpsAgentMac.Debug.entitlements` (App Sandbox + network + microphone, app group omitted). **Release** is untouched (automatic signing, full `PersonalOpsAgentMac.entitlements` with the app group at iOS parity) — the config the user signs properly. `xcodebuild build -scheme PersonalOpsAgentMac -destination 'platform=macOS'` now succeeds on a clean checkout. Documented in `docs/MAC_SETUP.md` ("Signing: Debug vs Release").
+- **Major-1 (proposal sources unreachable) — FIXED.** New `Proposals/PlanProposalCoordinator.swift` is the testable seam the views call; it only ever routes to `ProposalEngine.enqueueBatch` (pending-only, no new execution path). `GoalsView` goal-plan preview → **"Propose schedule to Ops Inbox"** (`ScheduleProposalBuilder` + `ConflictProposalBuilder.detectAndBuild` across active goals). `WeeklyReviewView` → **"Plan next week to Ops Inbox"** (`WeeklyReviewProposalBuilder`). `GoalsView` now takes `IntegrationsEnvironment` (passed from `RootView`). Covered by `PlanProposalCoordinatorTests` (schedule lands pending + no write; cross-goal conflict surfaces; factKey re-run dedupe; plan-next-week lands pending + no write).
+- **Major-2 (Gmail scan unreachable) — FIXED.** `RootView` now passes `integrations.gmail` / `integrations.gmailMetadata` into `IntegrationsSettingsView`, so the "Scan now" section renders when Gmail is configured; the scan → pending-proposal path is already covered by `GmailScanCoordinatorTests`.
+- **Minor-1 — FIXED.** `BriefingView` one-tap complete/skip now surfaces write failures in an alert instead of silently swallowing them (Rule 6).
+- **Minor-2 — FIXED.** Added `PromptLibrary.resourceURL(for:)` + `PromptLibraryTests.test_everyPrompt_resolvesInBundle` (clean insurance behind the retained, now-guarded `fatalError`).
+- **Minor-3 — DEFERRED (accepted).** Preview-only `try!` in `RootView.PreviewSupport` never runs at runtime; changing it adds no runtime safety.
+
+**Verified:** `swift test` 255/255 (250 prior + 5 new), 0 failures. `xcodebuild build -scheme PersonalOpsAgentMac -destination 'platform=macOS'` BUILD SUCCEEDED on a certless environment. `xcodebuild test -scheme PersonalOpsAgent -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.2'` TEST SUCCEEDED.
