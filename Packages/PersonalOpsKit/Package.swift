@@ -14,7 +14,7 @@ let package = Package(
     ],
     products: [
         .library(name: "PersonalOpsKit", targets: [
-            "Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals", "Signals", "Reasoning", "Voice", "UI"
+            "Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals", "Signals", "Reasoning", "Agent", "Voice", "UI"
         ]),
         // Fixtures is a first-class (non-test-only) product so both package tests and the
         // app can seed from it; real implementations replace the fakes in later phases.
@@ -55,11 +55,26 @@ let package = Package(
         // enqueue seam + rejection-signal machinery. Nothing depends back on Signals except UI.
         .target(name: "Signals", dependencies: ["Core", "Data", "Integrations", "Proposals"]),
 
-        // LLM reasoning boundary (Phase 5): ReasoningProvider abstraction + Prompts/.
+        // LLM reasoning boundary (Phase 5): the provider-neutral ReasoningProvider contract,
+        // the Gemini Flash implementation (the ONLY Gemini-specific code), versioned Prompts/,
+        // the prompt loader, and the model-call audit sink. Depends on Integrations only to
+        // reuse the Phase 2 HTTPTransport (mock-verifiable) — it never mentions Gemini above
+        // the GeminiReasoningProvider boundary.
         .target(
             name: "Reasoning",
-            dependencies: ["Core"],
+            dependencies: ["Core", "Integrations"],
             resources: [.process("Prompts")]
+        ),
+
+        // Agent orchestration (Phase 5): the provider-NEUTRAL narrative workflows (briefing /
+        // weekly review), the read/propose tool registry (§3), the bounded Q&A tool-calling
+        // loop (§2), context assembly (§4), and the AgentEnvironment composition root. It wires
+        // the neutral loop/tools to the real seams (MemoryStore, Goals, calendar/Gmail, Health,
+        // and — for propose tools — ProposalEngine.enqueue). Nothing Gemini-specific lives here;
+        // it talks only to the ReasoningProvider protocol, so the provider stays swappable.
+        .target(
+            name: "Agent",
+            dependencies: ["Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals", "Reasoning"]
         ),
 
         // Voice stack (Phase 6): STT/TTS boundary — skeleton only.
@@ -68,7 +83,7 @@ let package = Package(
         // Shared SwiftUI surface consumed by the app shell. Depends on Data from Phase 1
         // so the app shell can browse the SwiftData-backed memory store, and on Integrations
         // from Phase 2 so the Settings screen can show connection status and connect/disconnect.
-        .target(name: "UI", dependencies: ["Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals", "Signals"]),
+        .target(name: "UI", dependencies: ["Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals", "Signals", "Reasoning", "Agent"]),
 
         // Protocol-based fakes with minimal seed data, used by every later phase's tests.
         .target(name: "Fixtures", dependencies: ["Core", "Integrations", "Reasoning", "Goals"]),
@@ -95,6 +110,15 @@ let package = Package(
         // on Integrations for the Gmail protocol/metadata, on Data for the durable record model,
         // and on Proposals to assert on the enqueued proposals + rejection signals.
         .testTarget(name: "SignalsTests",
-                    dependencies: ["Signals", "Core", "Data", "Integrations", "Proposals", "Fixtures"])
+                    dependencies: ["Signals", "Core", "Data", "Integrations", "Proposals", "Fixtures"]),
+        // Phase 5 reasoning boundary. Depends on Integrations for MockURLProtocol/HTTPTransport
+        // (the Gemini request/response path is exercised against a mocked transport) and on
+        // Fixtures for the fake/scripted reasoning providers.
+        .testTarget(name: "ReasoningTests",
+                    dependencies: ["Reasoning", "Core", "Integrations", "Fixtures"]),
+        // Phase 5 agent orchestration + golden fixtures. Depends on the full stack the tools
+        // run against plus Fixtures for the scripted reasoning provider and fake integrations.
+        .testTarget(name: "AgentTests",
+                    dependencies: ["Agent", "Core", "Data", "Goals", "DailyLoop", "Proposals", "Integrations", "Reasoning", "Fixtures"])
     ]
 )

@@ -4,6 +4,7 @@ import Core
 import Data
 import Integrations
 import Goals
+import Agent
 
 /// # UI module (shared SwiftUI surface)
 ///
@@ -14,10 +15,14 @@ import Goals
 /// (Briefing, Ops Inbox, …) arrives in Phase 3B+.
 public struct RootView: View {
     private let integrations: IntegrationsEnvironment
+    private let agent: AgentEnvironment
 
-    /// The app injects a composed integrations environment; previews/tests can pass one too.
-    public init(integrations: IntegrationsEnvironment) {
+    /// The app injects a composed integrations + agent environment; previews/tests can pass one
+    /// too. The agent defaults to `.unavailable()` so callers that don't use reasoning still work.
+    public init(integrations: IntegrationsEnvironment,
+                agent: AgentEnvironment = .unavailable()) {
         self.integrations = integrations
+        self.agent = agent
     }
 
     public var body: some View {
@@ -47,6 +52,11 @@ public struct RootView: View {
                 GoalsView()
             }
             .tabItem { Label("Goals", systemImage: "target") }
+
+            NavigationStack {
+                AskView(agent: agent, integrations: integrations)
+            }
+            .tabItem { Label("Ask", systemImage: "bubble.left.and.text.bubble.right") }
 
             NavigationStack {
                 MemoryBrowserView()

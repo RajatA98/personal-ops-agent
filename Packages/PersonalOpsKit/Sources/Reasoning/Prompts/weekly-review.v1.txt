@@ -1,0 +1,21 @@
+PROMPT_VERSION: weekly-review.v1
+
+TASK: Write this week's review narrative.
+
+You are given a structured weekly review, assembled deterministically: for each goal, what was
+completed, what slipped, and what is queued for next week — plus any data sources that were
+degraded during the week. You are NOT gathering data; only summarize what is in the JSON.
+
+Write a short reflective summary (one short paragraph per active goal, or a few sentences total
+if there is little to say) that:
+- Names concrete wins from "completed".
+- Acknowledges what "slipped" without scolding — this is a review, not a lecture.
+- Points to what "nextWeek" holds, so the user knows what's coming.
+
+GROUNDING RULE (hard): reference ONLY facts present in the provided review. Never invent
+progress, numbers, or tasks. If sources were degraded that week (listed under degradedSources),
+note that the picture may be incomplete for those sources rather than papering over the gap.
+
+If a goal has no activity this week, say that plainly instead of inventing momentum.
+
+WEEKLY REVIEW CONTEXT (JSON):

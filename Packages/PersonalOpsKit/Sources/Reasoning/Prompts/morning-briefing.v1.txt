@@ -1,0 +1,25 @@
+PROMPT_VERSION: morning-briefing.v1
+
+TASK: Write this morning's briefing narrative.
+
+You are given a structured briefing that was assembled deterministically from the user's
+calendar, goals, yesterday's log, open loops, and each source's freshness. You are NOT
+gathering data — everything you may mention is already in the JSON below. Do not fetch or
+assume anything else.
+
+Write 2–5 short sentences that:
+- Lead with the single most important thing today (the "topPriority" if present).
+- Mention today's real calendar events and any agent-scheduled blocks, keeping them distinct
+  (agent-owned blocks are ones this app proposed, not the user's own meetings).
+- Call out anything that has slipped (past its acceptable window) so it isn't forgotten.
+- Note yesterday's captured reality only if it informs today.
+
+GROUNDING RULE (hard): reference ONLY facts present in the provided briefing. Never invent an
+event, task, time, or number. If a source is listed under absent/unavailable sources, say
+plainly that it could not be read (for example, "I couldn't check your email this morning")
+rather than implying today's picture is complete.
+
+If the briefing is essentially empty (no events, no due tasks, no slips), say so honestly and
+keep it to a sentence.
+
+BRIEFING CONTEXT (JSON):

@@ -4,6 +4,8 @@ import Core
 import Data
 import Integrations
 import Signals
+import Agent
+import Reasoning
 import UI
 
 /// iOS app entry point. Phase 1 stands up the SwiftData model container; Phase 2 composes the
@@ -19,6 +21,7 @@ import UI
 struct PersonalOpsAgentApp: App {
     private let container: ModelContainer
     private let integrations: IntegrationsEnvironment
+    private let agent: AgentEnvironment
 
     init() {
         do {
@@ -36,18 +39,34 @@ struct PersonalOpsAgentApp: App {
             // Durable Gmail metadata store (Phase 4B) so scan dedupe survives relaunch.
             self.integrations = .live(clientID: config.googleOAuthClientID,
                                       metadataStore: SwiftDataGmailMetadataStore(modelContainer: container))
+            // Reasoning layer (Phase 5): Gemini Flash if a real key is present, else unavailable.
+            if Self.isRealKey(config.geminiAPIKey) {
+                self.agent = .live(apiKey: config.geminiAPIKey,
+                                   audit: LoggingModelCallAuditSink(logger: logger))
+                logger.log(.info, "Reasoning layer configured (Gemini Flash).")
+            } else {
+                self.agent = .unavailable()
+                logger.log(.info, "No Gemini API key — reasoning layer unavailable.")
+            }
             logger.log(.info, "Integrations configured for Google OAuth client.")
         } else {
             self.integrations = .unconfigured()
+            self.agent = .unavailable()
             logger.log(.info, "No Secrets/Config.local found — integrations start unconfigured.")
         }
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(integrations: integrations)
+            RootView(integrations: integrations, agent: agent)
         }
         .modelContainer(container)
+    }
+
+    /// A key is "real" only if present and not the template placeholder — so a checked-out
+    /// `Config.example`-shaped file doesn't try to talk to Gemini with `REPLACE_ME`.
+    private static func isRealKey(_ key: String) -> Bool {
+        !key.isEmpty && !key.hasPrefix("REPLACE_ME")
     }
 
     /// Look for a bundled `Config.local` (dev builds copy it into the app bundle). Returns
