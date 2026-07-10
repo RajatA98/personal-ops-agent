@@ -95,8 +95,8 @@ capability/container isn't set up yet) — fix that and relaunch.
 
 ## Verifying it actually works: the device test matrix
 
-Real sync can only be confirmed with **two devices** (two iPhones, or an iPhone + the Mac app once
-Phase 7B lands), both signed into the same iCloud account, both running a signed build with
+Real sync can only be confirmed with **two devices** — two iPhones, or (Phase 7B) an **iPhone + the
+Mac app** — both signed into the same iCloud account, both running a signed build with
 `CLOUDKIT_SYNC_ENABLED=true`. Run each of these and confirm the expected result. Give sync a short
 window (typically seconds, occasionally a minute) to propagate.
 
@@ -109,7 +109,19 @@ window (typically seconds, occasionally a minute) to propagate.
 | 5 | **Conflicting edits.** Edit the *same* fact differently on A and B while briefly offline, then let them sync. | The app surfaces a **conflict** for that fact (two active revisions) rather than silently keeping only one — resolve it in-app. |
 | 6 | **Deletion vs. edit.** "Delete" (expire) an item on A while editing it on B. | The edit is **not lost** — the item resolves to B's edit; deletion never silently wins over a concurrent edit. |
 
-If all six behave as described, sync is verified. If any misbehaves, note which — SwiftData's
+### Mac companion rows (Phase 7B — run device A = iPhone, device B = Mac app)
+
+These extend the matrix to the iPhone↔Mac pair specifically, and cover the Mac's synced-data paths.
+
+| # | Do this | Expected result ("verified" looks like) |
+|---|---------|------------------------------------------|
+| 7 | **iPhone → Mac core loop.** Approve/dismiss a proposal, complete a goal task, and add an evening-capture note on the iPhone. | The Mac app reflects all three within the sync window — the Inbox, Goals, and Briefing/Memory update without a relaunch. |
+| 8 | **Mac → iPhone core loop.** Do the reverse on the Mac (approve a proposal, mark progress, ask a question that creates a pending proposal). | The iPhone reflects them; a proposal approved on the Mac hits the agent calendar exactly once (idempotent write shared with the iPhone). |
+| 9 | **HealthKit pacing reaches the Mac.** Let the iPhone read HealthKit (open a goal so pacing computes), give sync a moment, then open the same goal on the Mac. | The Mac shows the same "HealthKit-influenced" pacing badge/rationale — powered by the iPhone's synced summaries, with no HealthKit on the Mac. With poor recovery on the iPhone, the Mac eases the same soft sessions. |
+| 10 | **Google is per-device.** Note that the Mac needs its **own** one-time "Connect Google." | Connecting Google on the Mac does not touch the iPhone's connection, and vice versa (per-device tokens, by design). |
+| 11 | **No loss/dup across a concurrent cycle.** Use both devices actively for a few minutes (approve, edit, capture on each), then let them settle. | Data converges with no duplicated events/records and no lost edits (conflicts surface per rows 4–6). |
+
+If all rows behave as described, sync is verified. If any misbehaves, note which — SwiftData's
 CloudKit layer is the least-mature area in the stack (LOCKED_DECISIONS #5), so real-device behavior
 is exactly what these steps exist to pin down.
 

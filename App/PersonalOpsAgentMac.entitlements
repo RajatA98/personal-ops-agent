@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- ========================================================================================
+	     macOS DEFAULT entitlements (Phase 7B) — free-tier-safe, App Sandbox on.
+
+	     Mirrors the iOS default (`App/App.entitlements`): declares only what a free Apple ID can
+	     sign, so a direct Xcode "Run" on the user's own Mac works without a paid account
+	     (LOCKED_DECISIONS #2). CloudKit sync lives in the separate
+	     `PersonalOpsAgentMac.CloudKit.entitlements` because a free account cannot provision a
+	     CloudKit container — see docs/CLOUDKIT_SETUP.md / docs/MAC_SETUP.md to switch it on after
+	     enrolling in the paid Apple Developer Program.
+
+	     Mac apps run inside the App Sandbox, so unlike iOS the Mac must explicitly declare the
+	     resources it touches:
+	       • network.client — outbound HTTPS to Google (Calendar/Gmail), Gemini, ElevenLabs.
+	       • device.audio-input — microphone for voice capture / on-device speech.
+	       • application-groups — shared container id (kept identical to iOS for parity).
+	     No calendar/EventKit entitlement is needed: calendar access is via Google's REST API over
+	     the network, never the local macOS Calendar.
+	     ======================================================================================== -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.rajatarora.PersonalOpsAgent</string>
+	</array>
+</dict>
+</plist>

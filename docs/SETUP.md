@@ -38,9 +38,16 @@ docs/SETUP.md                 This file
 ```
 
 Most logic lives in the Swift Package so it can be tested fast on the host with
-`swift test`; the Xcode project is a thin shell that links the package. The macOS app
-target arrives in Phase 7B — the package already declares a macOS platform so the same
-modules compile for it.
+`swift test`; the Xcode project is a thin shell that links the package. The **macOS app
+target** (`PersonalOpsAgentMac`, entry point `App/macOS/`) shipped in Phase 7B — it links
+the same package and renders the same shared `RootView`. To build/run the Mac app and to
+understand what differs from iPhone (HealthKit as synced data, per-device Google OAuth,
+iOS-only iMessage/Shortcuts and widget), see **`docs/MAC_SETUP.md`**:
+
+```bash
+xcodebuild build -project PersonalOpsAgent.xcodeproj \
+  -scheme PersonalOpsAgentMac -destination 'platform=macOS'
+```
 
 ## 1. Configure secrets (optional in Phase 0)
 

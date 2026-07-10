@@ -51,17 +51,36 @@ public enum DataSchemaV2: VersionedSchema {
     }
 }
 
+/// # V3 — adds `HealthSummaryRecord` (Phase 7B)
+///
+/// The only delta from V2 is the **addition** of `HealthSummaryRecord` (the syncable, persisted
+/// per-day health summary that lets the macOS app consume HealthKit-derived pacing as *synced
+/// data* rather than reading HealthKit natively). Like V1→V2, the change is purely additive — a
+/// brand-new model, no field changed on any existing model — so the V2→V3 migration is
+/// `.lightweight` (SwiftData infers it; no data transform), the CloudKit-safe kind of change
+/// (additive, optional/defaulted, no unique constraints). This is exactly the additive
+/// `DataSchemaV3` + `.lightweight` stage that Phase 7A's handoff anticipated for the synced
+/// HealthSummary path.
+public enum DataSchemaV3: VersionedSchema {
+    public static var versionIdentifier: Schema.Version { Schema.Version(3, 0, 0) }
+
+    public static var models: [any PersistentModel.Type] {
+        DataSchemaV2.models + [HealthSummaryRecord.self]
+    }
+}
+
 /// Ordered list of schema versions and the migration stages between them. V1 is the baseline;
-/// V2 adds `GmailMessageRecord` via a single lightweight stage.
+/// V2 adds `GmailMessageRecord`, V3 adds `HealthSummaryRecord` — each via a single lightweight stage.
 public enum MemoryMigrationPlan: SchemaMigrationPlan {
     public static var schemas: [any VersionedSchema.Type] {
-        [DataSchemaV1.self, DataSchemaV2.self]
+        [DataSchemaV1.self, DataSchemaV2.self, DataSchemaV3.self]
     }
 
     public static var stages: [MigrationStage] {
         [
-            // Additive-only (new model): SwiftData handles it as a lightweight migration.
-            .lightweight(fromVersion: DataSchemaV1.self, toVersion: DataSchemaV2.self)
+            // Additive-only (new model): SwiftData handles each as a lightweight migration.
+            .lightweight(fromVersion: DataSchemaV1.self, toVersion: DataSchemaV2.self),
+            .lightweight(fromVersion: DataSchemaV2.self, toVersion: DataSchemaV3.self)
         ]
     }
 }
@@ -122,9 +141,9 @@ public enum DataStore {
     public static let cloudKitContainerIdentifier = "iCloud.com.rajatarora.PersonalOpsAgent"
 
     /// The current schema, built from the versioned schema (not an ad-hoc model list) so
-    /// it always matches the migration plan. Points at the newest version (V2).
+    /// it always matches the migration plan. Points at the newest version (V3).
     public static var schema: Schema {
-        Schema(versionedSchema: DataSchemaV2.self)
+        Schema(versionedSchema: DataSchemaV3.self)
     }
 
     /// Build a container. **The single construction point** — the app, tests, previews, and the

@@ -23,6 +23,8 @@ public enum DataModule {
     /// `DataSchemaV1.versionIdentifier`; this mirrors its major component for quick checks
     /// and is bumped in lockstep whenever a new `DataSchemaVN` is introduced.
     /// Phase 0 shipped `0` (no models). Phase 1 ships schema V1. Phase 4B ships V2 (adds
-    /// `GmailMessageRecord`, the durable Gmail scan ledger — a purely additive change).
-    public static let schemaVersion = 2
+    /// `GmailMessageRecord`, the durable Gmail scan ledger). Phase 7B ships V3 (adds
+    /// `HealthSummaryRecord`, the syncable health summary for the macOS pacing path) — both
+    /// purely additive changes.
+    public static let schemaVersion = 3
 }

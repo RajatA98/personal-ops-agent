@@ -88,6 +88,19 @@ public final class AppleSpeechToText: SpeechToText, @unchecked Sendable {
         return await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
             AVAudioApplication.requestRecordPermission { granted in cont.resume(returning: granted) }
         }
+        #elseif os(macOS)
+        // Phase 7B: macOS has no `AVAudioApplication` record-permission API — the microphone is a
+        // capture *device*, so request access through `AVCaptureDevice`. The system shows its
+        // prompt using the target's `NSMicrophoneUsageDescription`. Already-granted returns
+        // immediately; the app is sandboxed with `com.apple.security.device.audio-input`.
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            return true
+        case .notDetermined:
+            return await AVCaptureDevice.requestAccess(for: .audio)
+        default:
+            return false
+        }
         #else
         return true
         #endif
