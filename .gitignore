@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+
+# Xcode / build
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode package/workspace local state
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+*.xcodeproj/xcuserdata/
+
+# Secrets — NEVER commit real credentials (Safety Rule #5).
+# The template `Secrets/Config.example` IS tracked; the real file is not.
+Secrets/Config.local
+Config.local
+*.secrets

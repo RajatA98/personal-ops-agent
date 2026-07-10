@@ -1,0 +1,60 @@
+import Foundation
+import Core
+import Integrations
+
+/// Protocol-based fake for `GoogleCalendarAPI` with minimal seed data. Records
+/// `createEvent` calls (with idempotency keys) so Phase 2/4A tests can assert
+/// exactly-once write semantics. Real REST implementation lands in Phase 2.
+public final class FakeGoogleCalendarAPI: GoogleCalendarAPI, @unchecked Sendable {
+
+    public struct CreatedEvent: Equatable, Sendable {
+        public let event: CalendarEventDTO
+        public let idempotencyKey: String
+    }
+
+    private let lock = NSLock()
+    private var seededEvents: [CalendarEventDTO]
+    private var _createdEvents: [CreatedEvent] = []
+
+    public init(events: [CalendarEventDTO] = []) {
+        self.seededEvents = events
+    }
+
+    public var createdEvents: [CreatedEvent] {
+        lock.withLock { _createdEvents }
+    }
+
+    public func listEvents(calendarID: String, from: Date, to: Date) async throws -> [CalendarEventDTO] {
+        lock.withLock { seededEvents.filter { $0.start >= from && $0.start <= to } }
+    }
+
+    public func createEvent(_ event: CalendarEventDTO, idempotencyKey: String) async throws -> CalendarEventDTO {
+        lock.withLock {
+            // Idempotent: a repeat key does not append a second record.
+            if !_createdEvents.contains(where: { $0.idempotencyKey == idempotencyKey }) {
+                _createdEvents.append(CreatedEvent(event: event, idempotencyKey: idempotencyKey))
+                seededEvents.append(event)
+            }
+        }
+        return event
+    }
+
+    /// Minimal, deterministic seed: one real event + one agent-owned event.
+    public static func seeded(referenceDate: Date = Date(timeIntervalSince1970: 1_000_000)) -> FakeGoogleCalendarAPI {
+        let real = CalendarEventDTO(
+            id: "real-standup",
+            calendarID: "primary",
+            title: "Team standup",
+            start: referenceDate.addingTimeInterval(3600),
+            end: referenceDate.addingTimeInterval(5400),
+            isAgentOwned: false)
+        let agent = CalendarEventDTO(
+            id: "agent-longrun",
+            calendarID: "agent",
+            title: "Long run (training)",
+            start: referenceDate.addingTimeInterval(28800),
+            end: referenceDate.addingTimeInterval(34200),
+            isAgentOwned: true)
+        return FakeGoogleCalendarAPI(events: [real, agent])
+    }
+}
