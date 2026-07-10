@@ -24,6 +24,31 @@ public final class FakeGoogleCalendarAPI: GoogleCalendarAPI, @unchecked Sendable
         lock.withLock { _createdEvents }
     }
 
+    /// Fixed agent-calendar ID the fake writes to.
+    public static let agentCalendarID = "agent"
+
+    public func listCalendars() async throws -> [CalendarInfo] {
+        [
+            CalendarInfo(id: "primary", summary: "My Calendar", isAgentOwned: false),
+            CalendarInfo(id: Self.agentCalendarID, summary: "Personal Ops Agent", isAgentOwned: true)
+        ]
+    }
+
+    public func ensureAgentCalendar() async throws -> String { Self.agentCalendarID }
+
+    public func updateEvent(_ event: CalendarEventDTO) async throws -> CalendarEventDTO {
+        lock.withLock {
+            if let idx = seededEvents.firstIndex(where: { $0.id == event.id }) {
+                seededEvents[idx] = event
+            }
+        }
+        return event
+    }
+
+    public func deleteEvent(id: String, calendarID: String) async throws {
+        lock.withLock { seededEvents.removeAll { $0.id == id } }
+    }
+
     public func listEvents(calendarID: String, from: Date, to: Date) async throws -> [CalendarEventDTO] {
         lock.withLock { seededEvents.filter { $0.start >= from && $0.start <= to } }
     }

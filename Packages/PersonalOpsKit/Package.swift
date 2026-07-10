@@ -48,8 +48,9 @@ let package = Package(
         .target(name: "Voice", dependencies: ["Core"]),
 
         // Shared SwiftUI surface consumed by the app shell. Depends on Data from Phase 1
-        // so the app shell can browse the SwiftData-backed memory store.
-        .target(name: "UI", dependencies: ["Core", "Data"]),
+        // so the app shell can browse the SwiftData-backed memory store, and on Integrations
+        // from Phase 2 so the Settings screen can show connection status and connect/disconnect.
+        .target(name: "UI", dependencies: ["Core", "Data", "Integrations"]),
 
         // Protocol-based fakes with minimal seed data, used by every later phase's tests.
         .target(name: "Fixtures", dependencies: ["Core", "Integrations", "Reasoning", "Goals"]),
