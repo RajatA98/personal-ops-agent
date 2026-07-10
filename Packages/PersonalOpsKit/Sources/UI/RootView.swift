@@ -1,38 +1,36 @@
 import SwiftUI
+import SwiftData
 import Core
+import Data
 
 /// # UI module (shared SwiftUI surface)
 ///
 /// Shared, cross-platform (iOS now, macOS in Phase 7B) SwiftUI views live here so both
-/// app targets consume one codebase (LOCKED_DECISIONS #1/#10). Phase 0 ships a minimal
-/// app shell proving the app builds, runs, and links `PersonalOpsKit`. Phase 1 replaces
-/// this with real navigation over the SwiftData store.
+/// app targets consume one codebase (LOCKED_DECISIONS #1/#10). Phase 1 replaces the Phase 0
+/// placeholder shell with a real navigation surface over the SwiftData-backed memory store:
+/// a browser that makes the append-only / revision / expiry / conflict lifecycle *visible*
+/// on seed data. Real product UI (Briefing, Ops Inbox, …) arrives in Phase 3B+.
 public struct RootView: View {
     public init() {}
 
-    private let modules = ["Data", "Integrations", "Goals", "Proposals", "Reasoning", "Voice", "UI"]
-
     public var body: some View {
         NavigationStack {
-            List {
-                Section("Personal Ops Agent") {
-                    Text("Scaffold ready — Phase 0")
-                        .font(.headline)
-                    Text("Daily operating layer. Propose, don't auto-act.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                Section("Modules") {
-                    ForEach(modules, id: \.self) { module in
-                        Label(module, systemImage: "square.stack.3d.up")
-                    }
-                }
-            }
-            .navigationTitle("Ops Agent")
+            MemoryBrowserView()
         }
     }
 }
 
 #Preview {
     RootView()
+        .modelContainer(PreviewSupport.seededContainer())
+}
+
+/// In-memory, seeded container for SwiftUI previews (never touches disk).
+enum PreviewSupport {
+    static func seededContainer() -> ModelContainer {
+        // Force-try is acceptable in a preview-only helper.
+        let container = try! DataStore.makeContainer(inMemory: true)
+        _ = try? MemorySampleData.seedIfEmpty(context: ModelContext(container))
+        return container
+    }
 }

@@ -9,15 +9,10 @@ import Core
 /// flexibility/priority/conflict-policy metadata consumed by Phase 4C's conflict
 /// detection is defined here.
 ///
-/// Phase 0 fixes the vocabulary so later phases share one contract.
-public enum TaskFlexibility: String, Equatable, Sendable, Codable {
-    case fixed, movable, optional
-}
-
-public enum ConflictPolicy: String, Equatable, Sendable, Codable {
-    case block, warn, allow
-}
-
+/// The shared scheduling vocabulary (`TaskFlexibility`, `ConflictPolicy`) lives in `Core`
+/// (`Core/Vocabulary.swift`) so the persistence layer can store it without a dependency
+/// cycle — Phase 1 relocated it there from this file (a move, not a redefinition).
+/// Reference those types via `import Core`.
 public enum GoalsModule {
     public static let supportedPlaybooks = ["training", "job_search"]
 }

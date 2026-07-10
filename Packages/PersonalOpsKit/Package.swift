@@ -47,14 +47,16 @@ let package = Package(
         // Voice stack (Phase 6): STT/TTS boundary — skeleton only.
         .target(name: "Voice", dependencies: ["Core"]),
 
-        // Shared SwiftUI surface consumed by the app shell.
-        .target(name: "UI", dependencies: ["Core"]),
+        // Shared SwiftUI surface consumed by the app shell. Depends on Data from Phase 1
+        // so the app shell can browse the SwiftData-backed memory store.
+        .target(name: "UI", dependencies: ["Core", "Data"]),
 
         // Protocol-based fakes with minimal seed data, used by every later phase's tests.
         .target(name: "Fixtures", dependencies: ["Core", "Integrations", "Reasoning", "Goals"]),
 
         // Tests.
         .testTarget(name: "CoreTests", dependencies: ["Core"]),
+        .testTarget(name: "DataTests", dependencies: ["Data", "Core", "Fixtures"]),
         .testTarget(name: "FixturesTests", dependencies: ["Fixtures", "Core", "Integrations", "Reasoning"]),
         .testTarget(name: "IntegrationsTests", dependencies: ["Integrations", "Fixtures"])
     ]
