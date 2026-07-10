@@ -14,6 +14,9 @@ public struct ProposedBlock: Sendable, Equatable, Identifiable {
     public let priority: Int
     /// The rule that generated the underlying task, for grouping/inspection.
     public let ruleKey: String
+    /// Non-nil when the underlying task was adjusted by HealthKit pacing — the visible
+    /// "HealthKit-influenced" marker carried into the preview layer (Phase 3C).
+    public let pacing: PacingInfluence?
 
     public init(
         id: UUID = UUID(),
@@ -23,7 +26,8 @@ public struct ProposedBlock: Sendable, Equatable, Identifiable {
         flexibility: TaskFlexibility,
         conflictPolicy: ConflictPolicy,
         priority: Int,
-        ruleKey: String
+        ruleKey: String,
+        pacing: PacingInfluence? = nil
     ) {
         self.id = id
         self.title = title
@@ -33,6 +37,7 @@ public struct ProposedBlock: Sendable, Equatable, Identifiable {
         self.conflictPolicy = conflictPolicy
         self.priority = priority
         self.ruleKey = ruleKey
+        self.pacing = pacing
     }
 }
 
@@ -84,7 +89,8 @@ public struct SchedulePreviewBuilder: Sendable {
                     flexibility: task.flexibility,
                     conflictPolicy: task.conflictPolicy,
                     priority: task.priority,
-                    ruleKey: task.ruleKey)
+                    ruleKey: task.ruleKey,
+                    pacing: task.pacing)
             }
 
         return SchedulePreview(

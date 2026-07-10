@@ -106,6 +106,9 @@ struct GoalDetailView: View {
             }
 
             if let playbook {
+                // Phase 3C: HealthKit pacing toggle + visible "HealthKit-influenced" label.
+                PacingInsightView(playbook: playbook)
+
                 Section("Milestones") {
                     ForEach(playbook.milestoneTemplates, id: \.key) { m in
                         Text(m.title).font(.callout)
@@ -129,6 +132,11 @@ struct GoalDetailView: View {
                             .font(.caption).foregroundStyle(.secondary)
                         Text("\(block.flexibility.rawValue) · \(block.conflictPolicy.rawValue)")
                             .font(.caption2).foregroundStyle(.secondary)
+                        if let pacing = block.pacing {
+                            Label(pacing.label, systemImage: "heart.text.square.fill")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.pink)
+                        }
                     }
                 }
             }

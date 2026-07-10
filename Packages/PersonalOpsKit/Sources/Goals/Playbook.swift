@@ -42,6 +42,14 @@ public struct GoalPlaybook: Sendable, Equatable {
     // 8. What "done" means for the whole goal.
     public let completionCriteria: [CompletionCriterion]
 
+    /// **Phase 3C — HealthKit pacing bounds (optional).** When present, HealthKit-derived
+    /// recovery signals may adjust this goal type's task load, but only within these
+    /// playbook-defined limits (which rules are eligible, and the floors on how far duration
+    /// or frequency may be cut). `nil` = this goal type is never HealthKit-paced (e.g. a job
+    /// search, which sleep quality shouldn't reshape). Keeping the bounds on the playbook is
+    /// what makes pacing a *data* transform, not new engine code.
+    public let pacingPolicy: PacingPolicy?
+
     public init(
         key: String,
         displayName: String,
@@ -52,7 +60,8 @@ public struct GoalPlaybook: Sendable, Equatable {
         reviewCadence: ReviewCadence,
         slipRule: SlipRule,
         scheduleBlockTemplates: [ScheduleBlockTemplate],
-        completionCriteria: [CompletionCriterion]
+        completionCriteria: [CompletionCriterion],
+        pacingPolicy: PacingPolicy? = nil
     ) {
         self.key = key
         self.displayName = displayName
@@ -64,11 +73,23 @@ public struct GoalPlaybook: Sendable, Equatable {
         self.slipRule = slipRule
         self.scheduleBlockTemplates = scheduleBlockTemplates
         self.completionCriteria = completionCriteria
+        self.pacingPolicy = pacingPolicy
     }
 
     /// Look up a schedule-block template by key (the `TaskRule.scheduleBlockKey` reference).
     public func scheduleBlock(_ key: String) -> ScheduleBlockTemplate? {
         scheduleBlockTemplates.first { $0.key == key }
+    }
+
+    /// A copy with `taskRules` replaced — used by `PacingAdjuster` to produce a paced variant
+    /// of the playbook without touching any other field (a pure data transform).
+    public func replacingTaskRules(_ newRules: [TaskRule]) -> GoalPlaybook {
+        GoalPlaybook(
+            key: key, displayName: displayName, intakeQuestions: intakeQuestions,
+            milestoneTemplates: milestoneTemplates, taskRules: newRules,
+            progressSignals: progressSignals, reviewCadence: reviewCadence,
+            slipRule: slipRule, scheduleBlockTemplates: scheduleBlockTemplates,
+            completionCriteria: completionCriteria, pacingPolicy: pacingPolicy)
     }
 }
 

@@ -77,7 +77,16 @@ public enum PlaybookLibrary {
         ],
         completionCriteria: [
             .targetDateReached
-        ]
+        ],
+        // Phase 3C: HealthKit may ease the *softer* sessions (run, strength) under poor
+        // recovery — never the immovable swim/ride/brick anchors — and only within bounds:
+        // at most one session dropped, never shorter than 60% of the planned duration.
+        pacingPolicy: PacingPolicy(
+            adjustableRuleKeys: ["run", "strength"],
+            minDurationScale: 0.6,
+            maxFrequencyReduction: 1,
+            poorDurationScale: 0.8,
+            poorFrequencyReduction: 1)
     )
 
     // MARK: Job Search
