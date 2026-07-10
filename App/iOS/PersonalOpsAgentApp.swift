@@ -3,6 +3,7 @@ import SwiftData
 import Core
 import Data
 import Integrations
+import Signals
 import UI
 
 /// iOS app entry point. Phase 1 stands up the SwiftData model container; Phase 2 composes the
@@ -32,7 +33,9 @@ struct PersonalOpsAgentApp: App {
         var logger = RedactingLogger()
         if let config = Self.loadLocalConfig() {
             for secret in config.secrets { logger.registerSecret(secret) }
-            self.integrations = .live(clientID: config.googleOAuthClientID)
+            // Durable Gmail metadata store (Phase 4B) so scan dedupe survives relaunch.
+            self.integrations = .live(clientID: config.googleOAuthClientID,
+                                      metadataStore: SwiftDataGmailMetadataStore(modelContainer: container))
             logger.log(.info, "Integrations configured for Google OAuth client.")
         } else {
             self.integrations = .unconfigured()
