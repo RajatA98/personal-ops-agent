@@ -49,8 +49,10 @@ xcodebuild build \
   -scheme PersonalOpsAgentMac \
   -destination 'platform=macOS'
 ```
-(A headless/CI machine without a signing certificate needs `CODE_SIGNING_ALLOWED=NO` added; a real
-Mac with your Apple ID selected signs automatically.)
+This now succeeds on a clean checkout **with no development certificate and no provisioning
+profile** — the Mac target's **Debug** configuration signs ad-hoc ("Sign to Run Locally":
+`CODE_SIGN_IDENTITY = "-"`, `CODE_SIGN_STYLE = Manual`). See "Signing: Debug vs Release" below for
+why, and for what you must do before you sign a real, distributable build.
 
 ### Secrets
 Same as iPhone: real Google/Gemini/ElevenLabs features need `Secrets/Config.local` (copy from
@@ -143,3 +145,27 @@ The Mac target ships **sandboxed** with a free-tier-safe default entitlements fi
 ElevenLabs), microphone (for voice), and the shared app group. A ready-to-activate CloudKit variant
 lives in `App/PersonalOpsAgentMac.CloudKit.entitlements` — switch to it (and set
 `CLOUDKIT_SYNC_ENABLED=true`) once you're on the paid account, exactly like the iPhone side.
+
+### Signing: Debug vs Release (and why the headless build works)
+
+A macOS **app-group** entitlement (`com.apple.security.application-groups`) requires a
+team-provisioned profile. On a clean checkout / CI machine there is no team, so automatic signing
+of the full entitlements failed the documented `xcodebuild` command (this was REVIEW_REPORT
+Critical-1). The fix keeps the entitlements structure intact and splits by configuration:
+
+- **Debug** → signs **ad-hoc** and points at `App/PersonalOpsAgentMac.Debug.entitlements`, a subset
+  that keeps App Sandbox + network + microphone but **omits the app group** (the one entitlement
+  that needs a profile). This is what makes the plain `xcodebuild ... -destination 'platform=macOS'`
+  command build anywhere with no cert. The only runtime effect is that the app group's shared
+  container isn't available in a Debug build — nothing on the Mac depends on it today (the widget is
+  iOS-only), so local Debug runs are unaffected.
+- **Release** → unchanged: `CODE_SIGN_STYLE = Automatic`, full `App/PersonalOpsAgentMac.entitlements`
+  (including the shared app group at iOS parity), hardened runtime on. **This is the configuration
+  you sign properly.** Before a Release/distributable build, open the target → **Signing &
+  Capabilities**, set **Team** to your Apple ID, and let automatic signing provision the app group
+  (and, if you've switched it on, the CloudKit container). Build Release with:
+  ```bash
+  xcodebuild build -project PersonalOpsAgent.xcodeproj \
+    -scheme PersonalOpsAgentMac -destination 'platform=macOS' -configuration Release
+  ```
+  (needs your signing team selected once, as above).

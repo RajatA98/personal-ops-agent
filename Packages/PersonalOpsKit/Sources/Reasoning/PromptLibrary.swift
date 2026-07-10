@@ -21,10 +21,19 @@ public enum PromptLibrary {
         public let body: String
     }
 
+    /// Non-trapping resolver for a prompt's bundled `.txt` URL. Exposed (internally, for tests) so
+    /// a cheap "every prompt resolves in `Bundle.module`" assertion can guard the `load` trap
+    /// below without crashing the test process (REVIEW_REPORT Minor-2).
+    static func resourceURL(for prompt: Prompt) -> URL? {
+        Bundle.module.url(forResource: prompt.rawValue, withExtension: "txt")
+    }
+
     /// Load a prompt from the module bundle. Traps only if a shipped resource is missing, which
     /// is a build/packaging error (the files are checked into the target's `Prompts/` folder).
+    /// `PromptLibraryTests.test_everyPrompt_resolvesInBundle` fails cleanly if that ever regresses,
+    /// so this trap is a last-resort programmer-error guard, not a live failure surface.
     public static func load(_ prompt: Prompt) -> LoadedPrompt {
-        guard let url = Bundle.module.url(forResource: prompt.rawValue, withExtension: "txt"),
+        guard let url = resourceURL(for: prompt),
               let raw = try? String(contentsOf: url, encoding: .utf8) else {
             fatalError("Missing bundled prompt resource: \(prompt.rawValue).txt")
         }

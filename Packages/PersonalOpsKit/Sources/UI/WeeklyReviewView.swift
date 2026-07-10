@@ -5,6 +5,7 @@ import Data
 import Goals
 import Integrations
 import DailyLoop
+import Proposals
 
 /// # Weekly Review tab (Phase 3B)
 ///
@@ -19,6 +20,9 @@ public struct WeeklyReviewView: View {
     private let integrations: IntegrationsEnvironment
 
     @State private var review: WeeklyReview?
+    @State private var planning = false
+    @State private var planSummary: String?
+    @State private var planError: String?
 
     public init(integrations: IntegrationsEnvironment) {
         self.integrations = integrations
@@ -49,6 +53,7 @@ public struct WeeklyReviewView: View {
                         bucket("Next week", rollup.nextWeek, systemImage: "arrow.forward.circle", tint: .blue)
                     }
                 }
+                planNextWeekSection(review)
             } else {
                 ContentUnavailableView("Building your review…", systemImage: "chart.bar")
             }
@@ -56,6 +61,56 @@ public struct WeeklyReviewView: View {
         .navigationTitle("Weekly Review")
         .task { reload() }
         .refreshable { reload() }
+    }
+
+    /// # "Plan next week" — route the next-week bucket into the Ops Inbox (Phase 4A wiring)
+    ///
+    /// Turns every goal's `nextWeek` tasks into a batch of pending create-event proposals via
+    /// `PlanProposalCoordinator`, so one Sunday session plans the week from the Ops Inbox. Nothing
+    /// is written to a calendar until each is approved there (Safety Rule #1).
+    @ViewBuilder
+    private func planNextWeekSection(_ review: WeeklyReview) -> some View {
+        let hasNextWeek = review.goals.contains { !$0.nextWeek.isEmpty }
+        if hasNextWeek {
+            Section {
+                Button {
+                    planNextWeek(review)
+                } label: {
+                    HStack {
+                        Label("Plan next week to Ops Inbox", systemImage: "tray.and.arrow.down")
+                        if planning { Spacer(); ProgressView() }
+                    }
+                }
+                .disabled(planning)
+                if let planSummary {
+                    Text(planSummary).font(.caption).foregroundStyle(.secondary)
+                }
+                if let planError {
+                    Label(planError, systemImage: "exclamationmark.triangle")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+            } footer: {
+                Text("Adds next week's blocks to your Ops Inbox as proposals to review. Nothing is written to a calendar until you approve it.")
+            }
+        }
+    }
+
+    private func planNextWeek(_ review: WeeklyReview) {
+        planning = true
+        planError = nil
+        planSummary = nil
+        defer { planning = false }
+        let coordinator = PlanProposalCoordinator(context: modelContext, calendar: integrations.calendar)
+        do {
+            let count = try coordinator.planNextWeek(from: review)
+            planSummary = count == 0
+                ? "Nothing new to plan — next week's blocks are already in your Ops Inbox."
+                : "Added \(count) proposal(s) for next week to your Ops Inbox."
+        } catch let error as AppError {
+            planError = error.userMessage
+        } catch {
+            planError = "Couldn't plan next week right now. Please try again."
+        }
     }
 
     @ViewBuilder

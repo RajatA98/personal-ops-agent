@@ -59,7 +59,7 @@ public struct RootView: View {
             .tabItem { Label("Inbox", systemImage: "tray.full") }
 
             NavigationStack {
-                GoalsView()
+                GoalsView(integrations: integrations)
             }
             .tabItem { Label("Goals", systemImage: "target") }
 
@@ -76,6 +76,8 @@ public struct RootView: View {
             NavigationStack {
                 IntegrationsSettingsView(status: integrations.status,
                                          controller: integrations.controller,
+                                         gmail: integrations.gmail,
+                                         gmailMetadata: integrations.gmailMetadata,
                                          syncState: syncState)
             }
             .tabItem { Label("Integrations", systemImage: "link") }

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- ========================================================================================
+	     macOS DEBUG entitlements (Phase 7B review fix) — ad-hoc / "Sign to Run Locally" safe.
+
+	     This is a headless-build-safe subset of `PersonalOpsAgentMac.entitlements`, used ONLY by
+	     the Mac target's **Debug** configuration so a clean checkout builds with no development
+	     certificate and no provisioning profile:
+	         xcodebuild build -project PersonalOpsAgent.xcodeproj \
+	             -scheme PersonalOpsAgentMac -destination 'platform=macOS'
+	     succeeds under ad-hoc codesigning (CODE_SIGN_IDENTITY = "-", CODE_SIGN_STYLE = Manual).
+
+	     It intentionally OMITS `com.apple.security.application-groups`: an app-group entitlement
+	     requires a team-provisioned profile, which is exactly what a clean/CI environment lacks,
+	     and which forced the documented `xcodebuild` command to fail (REVIEW_REPORT Critical-1).
+	     The full entitlements — including the shared app group kept at iOS parity — live in
+	     `PersonalOpsAgentMac.entitlements` and are used by the **Release** configuration, i.e. the
+	     configuration the user signs properly once enrolled. See docs/MAC_SETUP.md.
+
+	     App Sandbox stays ON here so the local Debug build exercises the same sandbox surface
+	     (outbound HTTPS to Google/Gemini/ElevenLabs, microphone) as a signed build.
+	     ======================================================================================== -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+</dict>
+</plist>

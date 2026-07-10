@@ -24,6 +24,9 @@ public struct BriefingView: View {
 
     @State private var briefing: MorningBriefing?
     @State private var isLoading = false
+    /// Surfaced when a one-tap complete/skip write fails, so the tap never silently no-ops
+    /// (Rule 6 — degrade *visibly*; REVIEW_REPORT Minor-1).
+    @State private var actionError: String?
 
     public init(integrations: IntegrationsEnvironment) {
         self.integrations = integrations
@@ -56,6 +59,13 @@ public struct BriefingView: View {
         .navigationTitle("Briefing")
         .task { await reload() }
         .refreshable { await reload() }
+        .alert("Couldn't update that",
+               isPresented: Binding(get: { actionError != nil },
+                                    set: { if !$0 { actionError = nil } })) {
+            Button("OK", role: .cancel) { actionError = nil }
+        } message: {
+            Text(actionError ?? "")
+        }
     }
 
     // MARK: Sections
@@ -173,7 +183,13 @@ public struct BriefingView: View {
             } else {
                 try actioner.skip(task: model, goal: goal, metricKey: metricKey, now: Date())
             }
-        } catch { return }
+        } catch let error as AppError {
+            actionError = error.userMessage
+            return
+        } catch {
+            actionError = "Couldn't save that update. Nothing was changed — please try again."
+            return
+        }
         Task { await reload() }
     }
 

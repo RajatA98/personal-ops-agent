@@ -3,19 +3,26 @@ import SwiftData
 import Core
 import Data
 import Goals
+import Integrations
+import Proposals
 
 /// # Goals tab (Phase 3A UI)
 ///
 /// A functional (not polished) surface over the goal engine: list active goals, create one
 /// from a playbook via an intake flow, and inspect the generated plan and its schedule
-/// **preview**. Nothing here writes to a calendar — the preview is inspect-only; real
-/// calendar events arrive via approved Phase 4A Proposals.
+/// **preview**. The preview itself writes nothing to a calendar; a **"Propose schedule"** action
+/// routes the plan through `PlanProposalCoordinator` so it lands as *pending* proposals in the Ops
+/// Inbox (real calendar events still only arrive via an approved Phase 4A Proposal).
 public struct GoalsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var goals: [Goal]
     @State private var showingCreate = false
 
-    public init() {}
+    private let integrations: IntegrationsEnvironment
+
+    public init(integrations: IntegrationsEnvironment) {
+        self.integrations = integrations
+    }
 
     /// Active (non-superseded, non-expired) goals only.
     private var activeGoals: [Goal] {
@@ -33,7 +40,7 @@ public struct GoalsView: View {
             }
             ForEach(activeGoals, id: \.appID) { goal in
                 NavigationLink {
-                    GoalDetailView(goal: goal)
+                    GoalDetailView(goal: goal, activeGoals: activeGoals, integrations: integrations)
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(goal.title).font(.headline)
@@ -70,7 +77,15 @@ public struct GoalsView: View {
 // MARK: - Goal detail (plan + schedule preview)
 
 struct GoalDetailView: View {
+    @Environment(\.modelContext) private var modelContext
     let goal: Goal
+    /// All active goals, so "Propose schedule" can run cross-goal conflict detection.
+    let activeGoals: [Goal]
+    let integrations: IntegrationsEnvironment
+
+    @State private var proposing = false
+    @State private var proposeSummary: String?
+    @State private var proposeError: String?
 
     private var playbook: GoalPlaybook? { PlaybookLibrary.playbook(forKey: goal.playbookKey) }
 
@@ -140,9 +155,63 @@ struct GoalDetailView: View {
                     }
                 }
             }
+
+            proposeSection
         }
         .navigationTitle(goal.title)
         .navigationBarTitleDisplayModeInlineIfAvailable()
+    }
+
+    /// # "Propose schedule" — route this goal's plan into the Ops Inbox (Phase 4A wiring)
+    ///
+    /// Builds pending create-event proposals for this goal's scheduled tasks and, at the same
+    /// seam, runs cross-goal conflict detection across all active goals so collisions surface as
+    /// their own proposals. Nothing is written to any calendar here — every item lands `.pending`
+    /// for review in the Ops Inbox (Safety Rule #1).
+    @ViewBuilder
+    private var proposeSection: some View {
+        Section {
+            Button {
+                propose()
+            } label: {
+                HStack {
+                    Label("Propose schedule to Ops Inbox", systemImage: "tray.and.arrow.down")
+                    if proposing { Spacer(); ProgressView() }
+                }
+            }
+            .disabled(proposing)
+            if let proposeSummary {
+                Text(proposeSummary).font(.caption).foregroundStyle(.secondary)
+            }
+            if let proposeError {
+                Label(proposeError, systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+        } footer: {
+            Text("Adds these blocks to your Ops Inbox as proposals to review. Any cross-goal conflicts are surfaced there too. Nothing is written to a calendar until you approve it.")
+        }
+    }
+
+    private func propose() {
+        proposing = true
+        proposeError = nil
+        proposeSummary = nil
+        defer { proposing = false }
+        let coordinator = PlanProposalCoordinator(context: modelContext, calendar: integrations.calendar)
+        do {
+            let summary = try coordinator.proposeSchedule(for: goal, amongActiveGoals: activeGoals)
+            if summary.total == 0 {
+                proposeSummary = "Nothing new to propose — these blocks are already in your Ops Inbox."
+            } else {
+                var parts = ["\(summary.scheduled) schedule proposal(s)"]
+                if summary.conflicts > 0 { parts.append("\(summary.conflicts) conflict(s) to resolve") }
+                proposeSummary = "Added " + parts.joined(separator: " and ") + " to your Ops Inbox."
+            }
+        } catch let error as AppError {
+            proposeError = error.userMessage
+        } catch {
+            proposeError = "Couldn't create proposals right now. Please try again."
+        }
     }
 }
 

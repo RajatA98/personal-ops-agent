@@ -3,6 +3,16 @@ import XCTest
 
 final class PromptLibraryTests: XCTestCase {
 
+    /// Cheap insurance behind `load`'s missing-resource `fatalError` (REVIEW_REPORT Minor-2):
+    /// assert every `Prompt` case resolves to a real bundled resource, failing *cleanly* here
+    /// rather than trapping in production if a `.txt` is ever dropped from `Prompts/`.
+    func test_everyPrompt_resolvesInBundle() {
+        for prompt in PromptLibrary.Prompt.allCases {
+            XCTAssertNotNil(PromptLibrary.resourceURL(for: prompt),
+                            "\(prompt.rawValue).txt is not bundled in Bundle.module")
+        }
+    }
+
     func test_allPromptsLoadWithVersionHeaderStripped() {
         for prompt in PromptLibrary.Prompt.allCases {
             let loaded = PromptLibrary.load(prompt)
