@@ -1,6 +1,8 @@
 import SwiftUI
+import SwiftData
 import Core
 import Integrations
+import Signals
 
 /// # Integrations / Settings screen (Phase 2)
 ///
@@ -17,15 +19,29 @@ public struct IntegrationsSettingsView: View {
     private let status: IntegrationStatusStore
     private let controller: any IntegrationController
     private let now: () -> Date
+    /// Optional Gmail environment for the "Scan now" affordance. When absent (the current
+    /// `RootView` call site, which is another agent's turf this phase), the scan section is
+    /// simply hidden — everything else renders unchanged. Wiring it up is a one-line change at
+    /// the `RootView`/App composition root (pass `integrations.gmail` + `integrations.gmailMetadata`).
+    private let gmail: (any GmailAPI)?
+    private let gmailMetadata: (any GmailMetadataStore)?
+
+    @Environment(\.modelContext) private var modelContext
 
     @State private var busy: Set<DataSource> = []
     @State private var errorMessage: String?
+    @State private var scanning = false
+    @State private var scanSummary: String?
 
     public init(status: IntegrationStatusStore,
                 controller: any IntegrationController,
+                gmail: (any GmailAPI)? = nil,
+                gmailMetadata: (any GmailMetadataStore)? = nil,
                 now: @escaping () -> Date = { Date() }) {
         self.status = status
         self.controller = controller
+        self.gmail = gmail
+        self.gmailMetadata = gmailMetadata
         self.now = now
     }
 
@@ -45,6 +61,10 @@ public struct IntegrationsSettingsView: View {
                                disconnect: { await perform(item.source, connect: false) })
             }
 
+            if let gmail, let gmailMetadata {
+                gmailScanSection(gmail: gmail, metadata: gmailMetadata)
+            }
+
             if let errorMessage {
                 Section {
                     Label(errorMessage, systemImage: "exclamationmark.triangle")
@@ -54,6 +74,45 @@ public struct IntegrationsSettingsView: View {
             }
         }
         .navigationTitle("Integrations")
+    }
+
+    /// "Scan now" — the foreground scan trigger. Runs the deterministic Gmail signal pipeline,
+    /// which only ever creates *pending* Proposals in the Ops Inbox (never auto-acts).
+    @ViewBuilder
+    private func gmailScanSection(gmail: any GmailAPI, metadata: any GmailMetadataStore) -> some View {
+        Section("Email signals") {
+            Text("Scan recent email for plan-like items (meetings, confirmations) and add them to your Ops Inbox as proposals to review. Nothing is added to any calendar until you approve it.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Button {
+                Task { await scanNow(gmail: gmail, metadata: metadata) }
+            } label: {
+                HStack {
+                    Label("Scan now", systemImage: "envelope.badge")
+                    if scanning { Spacer(); ProgressView() }
+                }
+            }
+            .disabled(scanning)
+            if let scanSummary {
+                Text(scanSummary).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func scanNow(gmail: any GmailAPI, metadata: any GmailMetadataStore) async {
+        scanning = true
+        scanSummary = nil
+        defer { scanning = false }
+        let coordinator = GmailScanCoordinator(context: modelContext, gmail: gmail, metadataStore: metadata)
+        do {
+            let result = try await coordinator.scanNow()
+            scanSummary = "Scanned \(result.scanned) message(s): \(result.proposed) new proposal(s), "
+                + "\(result.dedupedByThread) already seen, \(result.suppressedByRejection) suppressed."
+        } catch let error as AppError {
+            errorMessage = error.userMessage
+        } catch {
+            errorMessage = "Couldn't scan email right now. Please try again."
+        }
     }
 
     /// Calendar and Gmail are covered by one Google grant, so connect/disconnect act on the

@@ -11,20 +11,28 @@ final class SchemaTests: XCTestCase {
 
     private let expectedEntities: Set<String> = [
         "DailyLog", "Commitment", "Goal", "GoalTask", "GoalProgress",
-        "Decision", "Preference", "OpenLoop", "Pattern", "Proposal"
+        "Decision", "Preference", "OpenLoop", "Pattern", "Proposal",
+        // Phase 4B: the durable Gmail scan ledger (V2, additive).
+        "GmailMessageRecord"
     ]
 
     func test_container_initializesCleanly_withFullSchema() throws {
         let container = try DataStore.makeContainer(inMemory: true)
         let names = Set(container.schema.entities.map(\.name))
-        XCTAssertEqual(names, expectedEntities, "every Phase 1 model must be in the shipped schema")
+        XCTAssertEqual(names, expectedEntities, "every shipped model must be in the schema")
     }
 
-    func test_schemaVersion_isV1() throws {
-        XCTAssertEqual(DataModule.schemaVersion, 1)
+    func test_schemaVersion_isV2() throws {
+        XCTAssertEqual(DataModule.schemaVersion, 2)
         XCTAssertEqual(DataSchemaV1.versionIdentifier, Schema.Version(1, 0, 0))
-        XCTAssertEqual(MemoryMigrationPlan.schemas.count, 1)
-        XCTAssertTrue(MemoryMigrationPlan.stages.isEmpty, "V1 is the baseline: no migration stages yet")
+        XCTAssertEqual(DataSchemaV2.versionIdentifier, Schema.Version(2, 0, 0))
+        // V1 + V2 registered; a single lightweight stage bridges them (Phase 4B added V2).
+        XCTAssertEqual(MemoryMigrationPlan.schemas.count, 2)
+        XCTAssertEqual(MemoryMigrationPlan.stages.count, 1, "one additive V1→V2 stage")
+        // V2's only delta from V1 is the added GmailMessageRecord model.
+        let v1 = Set(DataSchemaV1.models.map { String(describing: $0) })
+        let v2 = Set(DataSchemaV2.models.map { String(describing: $0) })
+        XCTAssertEqual(v2.subtracting(v1), ["GmailMessageRecord"])
     }
 
     func test_containerCanReadAndWrite_everyModelType() throws {

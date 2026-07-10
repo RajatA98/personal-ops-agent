@@ -22,6 +22,7 @@ public enum DataModule {
     /// Marketing marker for the current on-disk schema. The authoritative version lives on
     /// `DataSchemaV1.versionIdentifier`; this mirrors its major component for quick checks
     /// and is bumped in lockstep whenever a new `DataSchemaVN` is introduced.
-    /// Phase 0 shipped `0` (no models). Phase 1 ships schema V1.
-    public static let schemaVersion = 1
+    /// Phase 0 shipped `0` (no models). Phase 1 ships schema V1. Phase 4B ships V2 (adds
+    /// `GmailMessageRecord`, the durable Gmail scan ledger — a purely additive change).
+    public static let schemaVersion = 2
 }

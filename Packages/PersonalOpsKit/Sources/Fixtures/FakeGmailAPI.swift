@@ -25,12 +25,16 @@ public final class FakeGmailAPI: GmailAPI, @unchecked Sendable {
                 messageID: "msg-1001", threadID: "thread-500",
                 receivedDate: referenceDate.addingTimeInterval(-7200),
                 scanTimestamp: scan,
-                snippet: "Interview confirmed for Thursday"),
+                snippet: "Interview confirmed for Thursday at 3pm",
+                subject: "Interview confirmed for Thursday 3pm",
+                sender: "Recruiting <no-reply@jobs.example.com>"),
             GmailMessageMetadata(
                 messageID: "msg-1002", threadID: "thread-501",
                 receivedDate: referenceDate.addingTimeInterval(-3600),
                 scanTimestamp: scan,
-                snippet: "Race registration receipt")
+                snippet: "Race registration receipt",
+                subject: "Your race registration receipt",
+                sender: "Registration <receipts@raceday.example.com>")
         ])
     }
 }

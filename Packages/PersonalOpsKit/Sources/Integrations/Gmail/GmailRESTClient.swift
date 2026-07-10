@@ -59,9 +59,13 @@ public actor GmailRESTClient: GmailAPI {
             var msgComponents = URLComponents(
                 url: baseURL.appendingPathComponent("/gmail/v1/users/me/messages/\(encode(ref.id))"),
                 resolvingAgainstBaseURL: false)!
+            // Header-only fetch (never the body). Subject/From are metadata used by Phase 4B's
+            // deterministic signal extraction and its downranking pattern — still no body content.
             msgComponents.queryItems = [
                 URLQueryItem(name: "format", value: "metadata"),
-                URLQueryItem(name: "metadataHeaders", value: "Date")
+                URLQueryItem(name: "metadataHeaders", value: "Date"),
+                URLQueryItem(name: "metadataHeaders", value: "Subject"),
+                URLQueryItem(name: "metadataHeaders", value: "From")
             ]
             let msgData = try await get(msgComponents.url!)
             let msg = try decode(MessageResource.self, from: msgData)
@@ -70,7 +74,9 @@ public actor GmailRESTClient: GmailAPI {
                 threadID: msg.threadId,
                 receivedDate: msg.receivedDate(),
                 scanTimestamp: scannedAt,
-                snippet: msg.snippet))
+                snippet: msg.snippet,
+                subject: msg.header("Subject"),
+                sender: msg.header("From")))
         }
 
         await metadataStore.upsert(results)
@@ -123,6 +129,11 @@ private struct MessageResource: Decodable {
 
     struct Payload: Decodable { let headers: [Header]? }
     struct Header: Decodable { let name: String; let value: String }
+
+    /// Case-insensitive header lookup (Gmail returns canonical casing, but be defensive).
+    func header(_ name: String) -> String? {
+        payload?.headers?.first { $0.name.lowercased() == name.lowercased() }?.value
+    }
 
     /// Prefer `internalDate` (authoritative receive time); fall back to the `Date` header.
     func receivedDate() -> Date {

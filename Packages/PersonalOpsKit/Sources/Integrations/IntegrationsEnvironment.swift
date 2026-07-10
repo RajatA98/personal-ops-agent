@@ -32,11 +32,17 @@ public final class IntegrationsEnvironment {
     }
 
     /// Build the live environment for a user-owned Google OAuth client ID.
+    ///
+    /// `metadataStore` is injectable so Phase 4B can supply its durable, SwiftData-backed
+    /// `GmailMetadataStore` (thread dedupe surviving relaunch) without `Integrations` having to
+    /// depend on `Data`/`Signals` (which would form a cycle — `Signals` imports the protocol from
+    /// here). When omitted, it defaults to the Phase 2 in-memory store.
     public static func live(clientID: String,
                             tokenStore: TokenStore = KeychainTokenStore(),
                             transport: HTTPTransport = URLSessionTransport(),
                             codeProvider: AuthorizationCodeProvider = makeDefaultCodeProvider(),
-                            clock: any Clock = SystemClock()) -> IntegrationsEnvironment {
+                            clock: any Clock = SystemClock(),
+                            metadataStore: (any GmailMetadataStore)? = nil) -> IntegrationsEnvironment {
         let status = IntegrationStatusStore()
         let config = GoogleOAuthConfig(clientID: clientID)
         let authenticator = GoogleAuthenticator(
@@ -46,7 +52,7 @@ public final class IntegrationsEnvironment {
             status: status,
             transport: transport,
             clock: clock)
-        let metadata = InMemoryGmailMetadataStore()
+        let metadata = metadataStore ?? InMemoryGmailMetadataStore()
         let calendar = GoogleCalendarRESTClient(tokenProvider: authenticator,
                                                 transport: transport, status: status, clock: clock)
         let gmail = GmailRESTClient(tokenProvider: authenticator, transport: transport,

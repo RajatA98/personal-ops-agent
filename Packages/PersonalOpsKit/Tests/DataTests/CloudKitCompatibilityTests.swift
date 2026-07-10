@@ -47,6 +47,7 @@ final class CloudKitCompatibilityTests: XCTestCase {
         context.insert(OpenLoop())
         context.insert(Pattern())
         context.insert(Proposal())
+        context.insert(GmailMessageRecord())
         XCTAssertNoThrow(try context.save())
     }
 

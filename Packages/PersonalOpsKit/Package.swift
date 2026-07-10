@@ -14,7 +14,7 @@ let package = Package(
     ],
     products: [
         .library(name: "PersonalOpsKit", targets: [
-            "Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals", "Reasoning", "Voice", "UI"
+            "Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals", "Signals", "Reasoning", "Voice", "UI"
         ]),
         // Fixtures is a first-class (non-test-only) product so both package tests and the
         // app can seed from it; real implementations replace the fakes in later phases.
@@ -48,6 +48,13 @@ let package = Package(
         // one module while its builders can see the upstream value types they translate.
         .target(name: "Proposals", dependencies: ["Core", "Data", "Integrations", "Goals", "DailyLoop"]),
 
+        // Gmail-derived signals (Phase 4B): deterministic, LLM-free extraction of plan-like
+        // email metadata into pending Proposals, a durable SwiftData-backed Gmail scan ledger
+        // (dedupe survives relaunch), and mark-as-wrong downranking. Depends on Integrations for
+        // the Gmail protocol/metadata, Data for the durable record model, and Proposals for the
+        // enqueue seam + rejection-signal machinery. Nothing depends back on Signals except UI.
+        .target(name: "Signals", dependencies: ["Core", "Data", "Integrations", "Proposals"]),
+
         // LLM reasoning boundary (Phase 5): ReasoningProvider abstraction + Prompts/.
         .target(
             name: "Reasoning",
@@ -61,7 +68,7 @@ let package = Package(
         // Shared SwiftUI surface consumed by the app shell. Depends on Data from Phase 1
         // so the app shell can browse the SwiftData-backed memory store, and on Integrations
         // from Phase 2 so the Settings screen can show connection status and connect/disconnect.
-        .target(name: "UI", dependencies: ["Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals"]),
+        .target(name: "UI", dependencies: ["Core", "Data", "Integrations", "Goals", "DailyLoop", "Proposals", "Signals"]),
 
         // Protocol-based fakes with minimal seed data, used by every later phase's tests.
         .target(name: "Fixtures", dependencies: ["Core", "Integrations", "Reasoning", "Goals"]),
@@ -83,6 +90,11 @@ let package = Package(
         // (idempotent-write assertions) and FakeClock, on Goals/DailyLoop for the preview and
         // weekly-review builders' inputs, and on Integrations for the calendar API + status store.
         .testTarget(name: "ProposalsTests",
-                    dependencies: ["Proposals", "Core", "Data", "Goals", "DailyLoop", "Fixtures", "Integrations"])
+                    dependencies: ["Proposals", "Core", "Data", "Goals", "DailyLoop", "Fixtures", "Integrations"]),
+        // Phase 4B Gmail signals. Depends on Fixtures for the fake Gmail seed data + FakeClock,
+        // on Integrations for the Gmail protocol/metadata, on Data for the durable record model,
+        // and on Proposals to assert on the enqueued proposals + rejection signals.
+        .testTarget(name: "SignalsTests",
+                    dependencies: ["Signals", "Core", "Data", "Integrations", "Proposals", "Fixtures"])
     ]
 )

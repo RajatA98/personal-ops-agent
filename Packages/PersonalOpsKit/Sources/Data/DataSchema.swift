@@ -36,15 +36,33 @@ public enum DataSchemaV1: VersionedSchema {
     }
 }
 
-/// Ordered list of schema versions and the migration stages between them. V1 is the
-/// baseline, so `stages` is empty; a V2 adds one stage here.
+/// # V2 — adds `GmailMessageRecord` (Phase 4B)
+///
+/// The only delta from V1 is the **addition** of the `GmailMessageRecord` model (the durable
+/// Gmail scan ledger that lets thread dedupe survive relaunch). Because the change is purely
+/// additive — a brand-new model, no field changed on any existing model — the V1→V2 migration
+/// is `.lightweight` (SwiftData infers it; no data transform needed), which is exactly the
+/// CloudKit-safe kind of change (additive, optional/defaulted, no unique constraints).
+public enum DataSchemaV2: VersionedSchema {
+    public static var versionIdentifier: Schema.Version { Schema.Version(2, 0, 0) }
+
+    public static var models: [any PersistentModel.Type] {
+        DataSchemaV1.models + [GmailMessageRecord.self]
+    }
+}
+
+/// Ordered list of schema versions and the migration stages between them. V1 is the baseline;
+/// V2 adds `GmailMessageRecord` via a single lightweight stage.
 public enum MemoryMigrationPlan: SchemaMigrationPlan {
     public static var schemas: [any VersionedSchema.Type] {
-        [DataSchemaV1.self]
+        [DataSchemaV1.self, DataSchemaV2.self]
     }
 
     public static var stages: [MigrationStage] {
-        [] // No migrations yet — V1 is the initial schema.
+        [
+            // Additive-only (new model): SwiftData handles it as a lightweight migration.
+            .lightweight(fromVersion: DataSchemaV1.self, toVersion: DataSchemaV2.self)
+        ]
     }
 }
 
@@ -54,9 +72,9 @@ public enum MemoryMigrationPlan: SchemaMigrationPlan {
 public enum DataStore {
 
     /// The current schema, built from the versioned schema (not an ad-hoc model list) so
-    /// it always matches the migration plan.
+    /// it always matches the migration plan. Points at the newest version (V2).
     public static var schema: Schema {
-        Schema(versionedSchema: DataSchemaV1.self)
+        Schema(versionedSchema: DataSchemaV2.self)
     }
 
     /// Build a container.
